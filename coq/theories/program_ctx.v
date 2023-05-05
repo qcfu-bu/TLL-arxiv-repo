@@ -1,3 +1,7 @@
+(* This file defines the program context (Δ).
+   Context merge, context constraint and their respective properties
+   are also presented here. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Import AutosubstSsr ARS tll_ast.
@@ -6,8 +10,13 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* A program context is encoded as a list of optional entries. The
+   ability to have empy positions in the program context is necessary
+   for facilitating the DeBrujin indices representation of variables.
+   If position i in the entry list is empty, then variable i does not
+   exist in that program context. *)
 Definition elem T := option (T * sort).
-Definition dyn_ctx := seq (elem term).
+Definition program_ctx := seq (elem term).
 
 Notation "m :U Γ" := (Some (m, U) :: Γ)
   (at level 30, right associativity).
@@ -18,8 +27,13 @@ Notation "m :{ s } Γ" := (Some (m, s) :: Γ)
 Notation "_: Γ" := (None :: Γ)
   (at level 30, right associativity).
 
+(* Context merge is defined as a ternary relation instead of a
+   function. During merging, we see that positions corresponding to
+   linearly typed variables can only be merged with an empty position.
+   So a valid instance of Δ1 ∘ Δ2 => Δ asserts that Δ1 and Δ2 and merge
+   successfully as context Δ. *)
 Reserved Notation "Δ1 ∘ Δ2 => Δ" (at level 40).
-Inductive merge : dyn_ctx -> dyn_ctx -> dyn_ctx -> Prop :=
+Inductive merge : program_ctx -> program_ctx -> program_ctx -> Prop :=
 | merge_nil :
   nil ∘ nil => nil
 | merge_left Δ1 Δ2 Δ m :
@@ -36,8 +50,9 @@ Inductive merge : dyn_ctx -> dyn_ctx -> dyn_ctx -> Prop :=
   _: Δ1 ∘ _: Δ2 => _: Δ
 where "Δ1 ∘ Δ2 => Δ" := (merge Δ1 Δ2 Δ).
 
+(* Context constraint. *)
 Reserved Notation "Δ ▷ s" (at level 40).
-Inductive key : dyn_ctx -> sort -> Prop :=
+Inductive key : program_ctx -> sort -> Prop :=
 | key_nil s :
   nil ▷ s
 | key_u Δ m :
@@ -51,16 +66,17 @@ Inductive key : dyn_ctx -> sort -> Prop :=
   _: Δ ▷ s
 where "Δ ▷ s" := (key Δ s).
 
-Inductive dyn_has : dyn_ctx -> var -> sort -> term -> Prop :=
-| dyn_has_O Δ A s :
+(* program_has Δ x s A represents (x :s A) ∈ Δ ∧ (Δ\x) ▷ U *)
+Inductive program_has : program_ctx -> var -> sort -> term -> Prop :=
+| program_has_O Δ A s :
   Δ ▷ U ->
-  dyn_has (A :{s} Δ) 0 s A.[ren (+1)]
-| dyn_has_S Δ A B x s :
-  dyn_has Δ x s A ->
-  dyn_has (B :U Δ) x.+1 s A.[ren (+1)]
-| dyn_has_N Δ A x s :
-  dyn_has Δ x s A ->
-  dyn_has (_: Δ) x.+1 s A.[ren (+1)].
+  program_has (A :{s} Δ) 0 s A.[ren (+1)]
+| program_has_S Δ A B x s :
+  program_has Δ x s A ->
+  program_has (B :U Δ) x.+1 s A.[ren (+1)]
+| program_has_N Δ A x s :
+  program_has Δ x s A ->
+  program_has (_: Δ) x.+1 s A.[ren (+1)].
 
 Lemma key_impure Δ : Δ ▷ L.
 Proof with eauto using key.

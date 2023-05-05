@@ -1,22 +1,27 @@
+(* This file presents the program reflection theorem. A useful corollary of
+   program reflection is the type validity theorem for program typing. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
-Require Export AutosubstSsr ARS sta_valid dyn_type.
+Require Export AutosubstSsr ARS logical_valid program_type.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Lemma dyn_sta_type Γ Δ m A : Γ ; Δ ⊢ m : A -> Γ ⊢ m : A.
-Proof with eauto using sta_type, sta_wf.
+(* Theorem 6 (Program Reflection) *)
+Lemma program_logical_reflect Γ Δ m A : Γ ; Δ ⊢ m : A -> Γ ⊢ m : A.
+Proof with eauto using logical_type, logical_wf.
   move:Γ Δ m A.
-  apply:(@dyn_type_mut _ (fun Γ Δ wf => sta_wf Γ))...
+  apply:(@program_type_mut _ (fun Γ Δ wf => logical_wf Γ))...
   Unshelve. all: eauto.
 Qed.
-#[global] Hint Resolve dyn_sta_type.
+#[global] Hint Resolve program_logical_reflect.
 
-Theorem dyn_valid Γ Δ m A : Γ ; Δ ⊢ m : A -> exists s, Γ ⊢ A : Sort s.
+(* Type validity theorem for program typing. *)
+Theorem program_valid Γ Δ m A : Γ ; Δ ⊢ m : A -> exists s, Γ ⊢ A : Sort s.
 Proof.
   move=>ty.
-  apply: sta_valid.
-  apply: dyn_sta_type; eauto.
+  apply: logical_valid.
+  apply: program_logical_reflect; eauto.
 Qed.

@@ -1,11 +1,16 @@
+(* The file presents the sort uniqueness theorem. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
-Require Export AutosubstSsr ARS sta_inv.
+Require Export AutosubstSsr ARS logical_inv.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* Due to the fact that dependent pairs do not have unique Σ-types, we
+   cannot show that for any Γ ⊢ m : A and Γ ⊢ m : B there is A === B.
+   Instead, we define a weaker relation than definitional equality. *)
 Inductive head_sim : term -> term -> Prop :=
 | head_sim_var x : head_sim (Var x) (Var x)
 | head_sim_sort s : head_sim (Sort s) (Sort s)
@@ -42,6 +47,9 @@ Inductive head_sim : term -> term -> Prop :=
 | head_sim_box : head_sim Box Box
 | head_sim_ptr l : head_sim (Ptr l) (Ptr l).
 
+(* We will prove that for Γ ⊢ m : A and Γ ⊢ m : B there is sim A B.
+   Additionally, sim (Sort s) (Sort t) implies s = t which proves
+   the sort uniqueness theorem. *)
 Inductive sim (m n : term) : Prop :=
 | Sim x y : m === x -> head_sim x y -> y === n -> sim m n.
 
@@ -90,9 +98,9 @@ Lemma sim_subst x y σ : sim x y -> sim x.[σ] y.[σ].
 Proof with eauto.
   move=>sm. inv sm.
   econstructor.
-  apply: sta_conv_subst...
+  apply: logical_conv_subst...
   apply: head_sim_subst...
-  apply: sta_conv_subst...
+  apply: logical_conv_subst...
 Qed.
 
 Ltac solve_sim :=
@@ -278,7 +286,7 @@ Proof with eauto using sim.
     repeat split... }
 Qed.
 
-Lemma sta_sort_uniq Γ s A :
+Lemma logical_sort_sim Γ s A :
   Γ ⊢ Sort s : A -> sim (Sort U) A.
 Proof with eauto.
   move e:(Sort s)=>n ty. elim: ty s e=>//{Γ n A}.
@@ -287,7 +295,7 @@ Proof with eauto.
   apply: sim_transL...
 Qed.
 
-Lemma sta_has_uniq Γ x A B : sta_has Γ x A -> sta_has Γ x B -> A = B.
+Lemma logical_has_sim Γ x A B : logical_has Γ x A -> logical_has Γ x B -> A = B.
 Proof with eauto.
   move=>hs. elim: hs B=>{Γ x A}.
   { move=>Γ A B hs. inv hs... }
@@ -295,31 +303,31 @@ Proof with eauto.
     rewrite (ih _ H3)... }
 Qed.
 
-Lemma sta_var_uniq Γ A B x :
-  Γ ⊢ Var x : B -> sta_has Γ x A -> sim A B.
+Lemma logical_var_sim Γ A B x :
+  Γ ⊢ Var x : B -> logical_has Γ x A -> sim A B.
 Proof with eauto using sim_reflexive.
   move e:(Var x)=>n ty. elim: ty A x e=>//{Γ n B}.
   { move=>Γ x A wf hs1 A0 x0 [e] hs2; subst.
-    rewrite (sta_has_uniq hs1 hs2)... }
+    rewrite (logical_has_sim hs1 hs2)... }
   { move=>Γ A B m s eq tym ihm tyB ihB A0 x e hs; subst.
     have eq':=ihm _ _ erefl hs.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_lam0_uniq Γ A B C m s :
+Lemma logical_lam0_sim Γ A B C m s :
   Γ ⊢ Lam0 A m s : C -> (forall C, (A :: Γ) ⊢ m : C -> sim B C) -> sim (Pi0 A B s) C.
 Proof with eauto.
   move e:(Lam0 A m s)=>n ty. elim: ty A B m s e=>//{Γ n C}.
   { move=>Γ A B m s tym ihm A0 B0 m0 s0 [e1 e2 e3] h; subst.
     have eq:=h _ tym. inv eq.
-    econstructor. apply: sta_conv_pi0...
-    constructor... apply: sta_conv_pi0... }
+    econstructor. apply: logical_conv_pi0...
+    constructor... apply: logical_conv_pi0... }
   { move=>Γ A B m s eq tym ihm tyB ihB A0 B0 m0 s0 e h; subst.
     have eq':=ihm _ _ _ _ erefl h.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_pi0_uniq Γ A B C s :
+Lemma logical_pi0_sim Γ A B C s :
   Γ ⊢ Pi0 A B s : C -> sim (Sort s) C.
 Proof with eauto.
   move e:(Pi0 A B s)=>n ty. elim: ty A B s e=>//{Γ n C}.
@@ -329,7 +337,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_pi1_uniq Γ A B C s :
+Lemma logical_pi1_sim Γ A B C s :
   Γ ⊢ Pi1 A B s : C -> sim (Sort s) C.
 Proof with eauto.
   move e:(Pi1 A B s)=>n ty. elim: ty A B s e=>//{Γ n C}.
@@ -339,20 +347,20 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_lam1_uniq Γ A B C m s :
+Lemma logical_lam1_sim Γ A B C m s :
   Γ ⊢ Lam1 A m s : C -> (forall C, (A :: Γ) ⊢ m : C -> sim B C) -> sim (Pi1 A B s) C.
 Proof with eauto.
   move e:(Lam1 A m s)=>n ty. elim: ty A B m s e=>//{Γ n C}.
   { move=>Γ A B m s tym ihm A0 B0 m0 s0 [e1 e2 e3] h; subst.
     have eq:=h _ tym. inv eq.
-    econstructor. apply: sta_conv_pi1...
-    constructor... apply: sta_conv_pi1... }
+    econstructor. apply: logical_conv_pi1...
+    constructor... apply: logical_conv_pi1... }
   { move=>Γ A B m s eq tym ihm tyB ihB A0 B0 m0 s0 e h; subst.
     have eq':=ihm _ _ _ _ erefl h.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_app0_uniq Γ A B C m n s :
+Lemma logical_app0_sim Γ A B C m n s :
   Γ ⊢ App m n : C -> (forall C, Γ ⊢ m : C -> sim (Pi0 A B s) C) -> sim B.[n/] C.
 Proof with eauto.
   move e:(App m n)=>x ty. elim: ty A B m n s e=>//{Γ x C}.
@@ -367,7 +375,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_app1_uniq Γ A B C m n s :
+Lemma logical_app1_sim Γ A B C m n s :
   Γ ⊢ App m n : C -> (forall C, Γ ⊢ m : C -> sim (Pi1 A B s) C) -> sim B.[n/] C.
 Proof with eauto.
   move e:(App m n)=>x ty. elim: ty A B m n s e=>//{Γ x C}.
@@ -382,7 +390,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_sig0_uniq Γ A B C s :
+Lemma logical_sig0_sim Γ A B C s :
   Γ ⊢ Sig0 A B s : C -> sim (Sort s) C.
 Proof with eauto.
   move e:(Sig0 A B s)=>m ty. elim: ty A B s e=>//{Γ m C}.
@@ -392,7 +400,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_sig1_uniq Γ A B C s :
+Lemma logical_sig1_sim Γ A B C s :
   Γ ⊢ Sig1 A B s : C -> sim (Sort s) C.
 Proof with eauto.
   move e:(Sig1 A B s)=>m ty. elim: ty A B s e=>//{Γ m C}.
@@ -402,7 +410,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_pair0_uniq Γ A B C m n s :
+Lemma logical_pair0_sim Γ A B C m n s :
   Γ ⊢ Pair0 m n s : C ->
   (forall X Y, Γ ⊢ m : X -> Γ ⊢ n : Y -> sim A X /\ sim B.[m/] Y) ->
   sim (Sig0 A B s) C.
@@ -416,7 +424,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_pair1_uniq Γ A B C m n s :
+Lemma logical_pair1_sim Γ A B C m n s :
   Γ ⊢ Pair1 m n s : C ->
   (forall X Y, Γ ⊢ m : X -> Γ ⊢ n : Y -> sim A X /\ sim B.[m/] Y) ->
   sim (Sig1 A B s) C.
@@ -430,7 +438,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_letin_uniq Γ m n A B :
+Lemma logical_letin_sim Γ m n A B :
   Γ ⊢ LetIn A m n : B -> sim A.[m/] B.
 Proof with eauto.
   move e:(LetIn A m n)=>x ty. elim: ty A m n e=>//{Γ B x}.
@@ -443,7 +451,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_with_uniq Γ A B C s :
+Lemma logical_with_sim Γ A B C s :
   Γ ⊢ With A B s : C -> sim (Sort s) C.
 Proof with eauto.
   move e:(With A B s)=>x ty. elim: ty A B s e=>//{Γ C x}.
@@ -453,7 +461,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_apair_uniq Γ A B C m n s :
+Lemma logical_apair_sim Γ A B C m n s :
   Γ ⊢ APair m n s : C ->
   (forall X Y, Γ ⊢ m : X -> Γ ⊢ n : Y -> sim A X /\ sim B Y) ->
   sim (With A B s) C.
@@ -461,14 +469,14 @@ Proof with eauto.
   move e:(APair m n s)=>x ty. elim: ty m n s e=>//{Γ C x}.
   { move=>Γ A0 B0 m n t tym ihm tyn ihn m0 n0 s0[e1 e2 e3]h; subst.
     have[e1 e2]:=h _ _ tym tyn. inv e1. inv e2.
-    econstructor. apply: sta_conv_with...
-    constructor... apply: sta_conv_with... }
+    econstructor. apply: logical_conv_with...
+    constructor... apply: logical_conv_with... }
   { move=>Γ A0 B0 m s eq tym ihm tyB ihB m0 n s0 e h; subst.
     have eq':=ihm _ _ _ erefl h.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_fst_uniq Γ A B C m s :
+Lemma logical_fst_sim Γ A B C m s :
   Γ ⊢ Fst m : C -> (forall X, Γ ⊢ m : X -> sim (With A B s) X) -> sim A C.
 Proof with eauto.
   move e:(Fst m)=>x ty. elim: ty m e=>//{Γ x C}.
@@ -479,7 +487,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_snd_uniq Γ A B C m s :
+Lemma logical_snd_sim Γ A B C m s :
   Γ ⊢ Snd m : C -> (forall X, Γ ⊢ m : X -> sim (With A B s) X) -> sim B C.
 Proof with eauto.
   move e:(Snd m)=>x ty. elim: ty m e=>//{Γ x C}.
@@ -490,7 +498,7 @@ Proof with eauto.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_id_uniq Γ A B m n :
+Lemma logical_id_sim Γ A B m n :
   Γ ⊢ Id A m n : B -> sim (Sort U) B.
 Proof with eauto.
   move e:(Id A m n)=>x ty. elim: ty A m n e=>//{Γ x B}.
@@ -499,20 +507,20 @@ Proof with eauto.
   apply: sim_transL...
 Qed.
 
-Lemma sta_refl_uniq Γ A B m :
+Lemma logical_refl_sim Γ A B m :
   Γ ⊢ Refl m : B -> (forall X, Γ ⊢ m : X -> sim A X) -> sim (Id A m m) B.
 Proof with eauto.
   move e:(Refl m)=>x ty. elim: ty m e=>//{Γ x B}.
   { move=>Γ A0 m tym ihm m0[e]h; subst.
     have eq:=h _ tym. inv eq.
-    econstructor. apply: sta_conv_id...
-    constructor... apply: sta_conv_id... }
+    econstructor. apply: logical_conv_id...
+    constructor... apply: logical_conv_id... }
   { move=>Γ A0 B m s eq tym ihm tyB ihB m0 e h; subst.
     have eq':=ihm _ erefl h.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_rw_uniq Γ A B C H P m n :
+Lemma logical_rw_sim Γ A B C H P m n :
   Γ ⊢ Rw B H P : C -> (forall X, Γ ⊢ P : X -> sim (Id A m n) X) -> sim B.[P,n/] C.
 Proof with eauto.
   move e:(Rw B H P)=>x ty. elim: ty B H P e=>//{Γ x C}.
@@ -520,69 +528,70 @@ Proof with eauto.
     have/sim_id_inj[_[eq1 eq2]]:=h _ tyP.
     have sc:sconv (P .: n .: ids) (P .: n0 .: ids) by move=>[|[|]]//.
     econstructor.
-    apply: sta_conv_compat...
+    apply: logical_conv_compat...
     all: eauto... }
   { move=>Γ A0 B m0 s eq tym ihm tyB ihB B0 H P e h; subst.
     have eq':=ihm _ _ _ erefl h.
     apply: sim_transL... }
 Qed.
 
-Lemma sta_uniq Γ m A B :
+Lemma logical_sim Γ m A B :
   Γ ⊢ m : A -> Γ ⊢ m : B -> sim A B.
 Proof with eauto.
   move=>ty. elim: ty B=>{Γ m A}.
   { move=>Γ s B tyB.
-    apply: sta_sort_uniq... }
+    apply: logical_sort_sim... }
   { move=>Γ x A wf hs B ty.
-    apply: sta_var_uniq... }
+    apply: logical_var_sim... }
   { move=>Γ A B s r t tyA ihA tyB ihB B0 ty.
-    apply: sta_pi0_uniq... }
+    apply: logical_pi0_sim... }
   { move=>Γ A B s r t tyA ihA tyB ihB B0 ty.
-    apply: sta_pi1_uniq... }
+    apply: logical_pi1_sim... }
   { move=>Γ A B m s tym ihm B0 ty.
-    apply: sta_lam0_uniq... }
+    apply: logical_lam0_sim... }
   { move=>Γ A B m s tym ihm B0 ty.
-    apply: sta_lam1_uniq... }
+    apply: logical_lam1_sim... }
   { move=>Γ A B m n s tym ihm tyn ihn B0 ty.
-    apply: sta_app0_uniq... }
+    apply: logical_app0_sim... }
   { move=>Γ A B m n s tym ihm tyn ihn B0 ty.
-    apply: sta_app1_uniq... }
+    apply: logical_app1_sim... }
   { move=>Γ A B s r t ord tyA ihA tyB ihB B0 ty.
-    apply: sta_sig0_uniq... }
+    apply: logical_sig0_sim... }
   { move=>Γ A B s r t ord1 ord2 tyA ihA tyB ihB B0 ty.
-    apply: sta_sig1_uniq... }
+    apply: logical_sig1_sim... }
   { move=>Γ A B m n t tyS ihS tym ihm tyn ihn B0 ty.
-    apply: sta_pair0_uniq... }
+    apply: logical_pair0_sim... }
   { move=>Γ A B m n t tyS ihS tym ihm tyn ihn B0 ty.
-    apply: sta_pair1_uniq... }
+    apply: logical_pair1_sim... }
   { move=>Γ A B C m n s t tyC ihC tym ihm tyn ihn B0 ty.
-    apply: sta_letin_uniq... }
+    apply: logical_letin_sim... }
   { move=>Γ A B C m n s t tyC ihC tym ihm tyn ihn B0 ty.
-    apply: sta_letin_uniq... }
+    apply: logical_letin_sim... }
   { move=>Γ A B s r t tyA ihA tyB ihB B0 ty.
-    apply: sta_with_uniq... }
+    apply: logical_with_sim... }
   { move=>Γ A B m n t tym ihm tyn ihn B0 ty.
-    apply: sta_apair_uniq... }
+    apply: logical_apair_sim... }
   { move=>Γ A B m t tym ihm B0 ty.
-    apply: sta_fst_uniq... }
+    apply: logical_fst_sim... }
   { move=>Γ A B m t tym ihm B0 ty.
-    apply: sta_snd_uniq... }
+    apply: logical_snd_sim... }
   { move=>Γ A m n s tyA ihA tym ihm tyn ihn B ty.
-    apply: sta_id_uniq... }
+    apply: logical_id_sim... }
   { move=>Γ A m tym ihm B ty.
-    apply: sta_refl_uniq... }
+    apply: logical_refl_sim... }
   { move=>Γ A B H P m n s tyB ihB tyH ihH tyP ihP B0 ty.
-    apply: sta_rw_uniq... }
+    apply: logical_rw_sim... }
   { move=>Γ A B m s eq tym1 ihm tyB ihB B0 tym2.
     apply: sim_transR.
     apply: ihm...
     apply: conv_sym... }
 Qed.
 
-Theorem sta_unicity Γ m s t :
+(* Theorem 3 (Sort Uniqueness) *)
+Theorem logical_sort_uniq Γ m s t :
   Γ ⊢ m : Sort s -> Γ ⊢ m : Sort t -> s = t.
 Proof.
   move=>tym1 tym2.
   apply: sim_sort.
-  apply: sta_uniq tym1 tym2.
+  apply: logical_sim tym1 tym2.
 Qed.

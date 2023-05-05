@@ -10,6 +10,7 @@ Unset Printing Implicit Defensive.
 
 Definition logical_ctx := seq term.
 
+(* logical_has Γ x A represents (x : A) ∈ Γ *)
 Inductive logical_has :
   logical_ctx -> var -> term -> Prop :=
 | logical_has_O Γ A :

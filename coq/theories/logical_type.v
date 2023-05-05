@@ -226,6 +226,7 @@ Inductive logical_type : logical_ctx -> term -> term -> Prop :=
   Γ ⊢ m : B
 where "Γ ⊢ m : A" := (logical_type Γ m A)
 
+(* logical context well-formed (Γ ⊢) *)
 with logical_wf : logical_ctx -> Prop :=
 | logical_wf_nil : logical_wf nil
 | logical_wf_cons Γ A s :
