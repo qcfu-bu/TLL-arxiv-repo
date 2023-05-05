@@ -1,0 +1,12 @@
+inductive lvec (n : nat) (A : L) : L =
+| lnil  of {e : 0 ≡ n}
+| lcons of {n0 : nat} {e : S n0 ≡ n} (hd : A) (tl : lvec n0 A)
+
+program vappend {m n : nat} {A : L} (xs : lvec m A) : lvec n A ⊸ lvec (m + n) A =
+ln ys ⇒
+  match xs with
+  | lnil e ⇒ rew [ m0, _ ⇒ lvec (m0 + n) A ] e in ys
+  | lcons n0 e hd tl ⇒
+    rew [ m0, _ ⇒ lvec (m0 + n) A ] e in
+    lcons (n0 + n) refl hd (vappend _ _ _ tl ys)
+  end

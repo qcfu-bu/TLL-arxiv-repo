@@ -1,0 +1,125 @@
+program split‹t› (zs : list‹_,t› nat) : list‹_,t› nat ⊗ list‹_,t› nat =
+  match zs with
+  | nil ⇒ ⟨nil, nil⟩
+  | x :: zs ⇒
+    match zs with
+    | nil ⇒ ⟨x :: nil, nil⟩
+    | y :: zs ⇒
+      let ⟨xs, ys⟩ = split zs in
+      ⟨x :: xs, y :: ys⟩
+    end
+  end
+
+program merge‹t› (xs : list‹_,t› nat) : list‹_,t› nat ⊸ list‹_,t› nat =
+ln ys ⇒
+  match xs with
+  | nil ⇒ ys
+  | x :: xs0 ⇒
+    match ys with
+    | nil ⇒ x :: xs0
+    | y :: ys0 ⇒
+      if x <= y then
+        x :: merge xs0 (y :: ys0)
+      else
+        y :: merge (x :: xs0) ys0
+    end
+  end
+
+program msort‹t› (zs : list‹_,t› nat) : list‹_,t› nat =
+  match zs with
+  | nil ⇒ nil
+  | x :: zs ⇒
+    match zs with
+    | nil ⇒ x :: nil
+    | y :: zs ⇒
+      let ⟨xs, ys⟩ = split (x :: y :: zs) in
+      merge (msort xs) (msort ys)
+    end
+  end
+
+inductive uniq‹t› (A : Type‹t›) (a : A) : Type‹t› =
+| Uniq of (m : A) {pf : m ≡ a}
+
+logical cmsort_ch‹t› (xs : list‹_,t› nat) : L =
+  ch⟨ ⇑(uniq _ (msort xs)) → • ⟩
+
+program cmsort_worker‹t› (zs : list‹_,t› nat) : cmsort_ch‹t› zs ⊸ IO unit =
+ln c ⇒
+  match zs as _zs_ in cmsort_ch _zs_ ⊸ IO unit with
+  | nil ⇒ ln c ⇒ let c ⇐ send c (Uniq nil refl) in close c
+  | z0 :: zs0 ⇒ ln c ⇒
+    match zs0 as _zs0_ in cmsort_ch (z0 :: _zs0_) ⊸ IO unit with
+    | nil ⇒ ln c ⇒ let c ⇐ send c (Uniq (z0 :: nil) refl) in close c
+    | z1 :: zs1 ⇒ ln c ⇒
+      match split (z0 :: z1 :: zs1) as _p_ in
+        {_p_ ≡ split (z0 :: z1 :: zs1)} ⊸ IO unit
+      with
+      | ⟨xs0, ys0⟩ ⇒ ln {e} ⇒
+        let r1 ⇐ fork (r1 : cmsort_ch xs0) in cmsort_worker xs0 r1 in
+        let r2 ⇐ fork (r2 : cmsort_ch ys0) in cmsort_worker ys0 r2 in
+        let ⟨msg1, r1⟩ ⇐ recv r1 in
+        let ⟨msg2, r2⟩ ⇐ recv r2 in
+        match msg1 with Uniq xs1 pf1 ⇒
+        match msg2 with Uniq xs2 pf2 ⇒
+          let zs = merge xs1 xs2 in
+          let c ⇐ send c (Uniq zs
+            rew [p, _ ⇒ zs ≡ (let ⟨xs, ys⟩ = p in merge (msort xs) (msort ys))] e in
+            rew [l, _ ⇒ zs ≡ merge l (msort ys0)] pf1 in
+            rew [l, _ ⇒ zs ≡ merge xs1 l] pf2 in
+            refl)
+          in close r1; close r2; close c
+        end end
+      end refl
+    end c
+  end c
+
+program cmsort‹t› (zs : list‹_,t› nat) : IO (uniq‹t› _ (msort zs)) =
+  let c ⇐ fork (c : cmsort_ch zs) in cmsort_worker zs c in
+  let ⟨msg, c⟩ ⇐ recv c in
+  close c;
+  return msg
+
+program digits : list‹_,U› _ =
+  "0" :: "1" :: "2" :: "3" :: "4" :: "5" :: "6" :: "7" :: "8" :: "9" :: nil
+
+program get_at {A : U} (n : nat) (xs : list‹_,U› A) (a : A) : A =
+  match n with
+  | O ⇒
+    match xs with
+    | nil ⇒ a
+    | x :: _ ⇒ x
+    end
+  | S n ⇒ 
+    match xs with
+    | nil ⇒ a
+    | _ :: xs ⇒ get_at _ n xs a
+    end
+  end
+
+program string_of_digit (n : nat) : string =
+  get_at _ n digits "" 
+
+program string_of_nat (n : nat) : string =
+  let s = string_of_digit (n % 10) in
+  let n = n / 10 in
+  if 0 < n then
+    string_of_nat n ^ s
+  else s
+
+program string_of_list‹t› (xs : list‹_,t› nat) : string =
+  match xs with
+  | nil ⇒ "nil"
+  | x :: xs ⇒ string_of_nat x ^ " :: " ^ string_of_list xs
+  end
+
+program main : IO unit =
+  let test1 : list‹_,U› _ = 5 :: 2 :: 1 :: 6 :: 4 :: 0 :: 3 :: nil in
+  let test2 : list‹_,L› _ = 3 :: 0 :: 6 :: 1 :: 4 :: 2 :: 5 :: nil in
+  let msg1 ⇐ cmsort test1 in
+  let msg2 ⇐ cmsort test2 in
+  match msg1 with Uniq sorted1 _ ⇒
+  match msg2 with Uniq sorted2 _ ⇒
+    print (string_of_list sorted1 ^ "\n");
+    print (string_of_list sorted2 ^ "\n")
+  end end
+  

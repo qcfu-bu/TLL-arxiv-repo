@@ -1,0 +1,20 @@
+inductive Tuple‹s,r,t› (A : Type‹s›) (B : Type‹r›) : Type‹t› =
+| Pair of (m : A) (n : B)
+
+inductive Sigma‹s,r,t› (A : Type‹s›) (B : A → Type‹r›) : Type‹t› =
+| DPair of (m : A) (n : B m)
+
+logical fst‹s,r,t› {A : Type‹s›} {B : A → Type‹r›} (m : Sigma‹_,_,t› A B) : A =
+  match m with
+  | DPair m _ ⇒ m
+  end
+
+program Fst‹s,r,t› {A : Type‹s›} {B : A → Type‹r›} (m : Sigma‹_,_,t› A B) : A =
+  match m with
+  | DPair m _ ⇒ m
+  end
+
+program Snd‹s,r,t› {A : Type‹s›} {B : A → Type‹r›} (m : Sigma‹_,_,t› A B) : B (fst _ _ m) =
+  match m as x0 in B (fst _ _ x0) with
+  | DPair _ n ⇒ n
+  end

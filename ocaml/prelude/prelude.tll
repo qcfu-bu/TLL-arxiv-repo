@@ -1,0 +1,215 @@
+-- ———————————————————————————————————————————————
+-- boolean
+-- ———————————————————————————————————————————————
+program andb (b1 : bool) (b2 : bool) : bool =
+  match b1 with
+  | true  ⇒ b2
+  | false ⇒ false
+  end
+
+program orb (b1 : bool) (b2 : bool) : bool =
+  match b1 with
+  | true  ⇒ true
+  | false ⇒ b2
+  end
+
+program notb (b : bool) : bool =
+  match b with
+  | true ⇒ false
+  | false ⇒ true
+  end
+
+
+-- ———————————————————————————————————————————————
+-- natural numbers
+-- ———————————————————————————————————————————————
+program lten (x : nat) (y : nat) : bool =
+  match x with
+  | O ⇒ true
+  | S x ⇒
+    match y with
+    | O ⇒ false
+    | S y ⇒ x <= y
+    end
+  end
+
+program gten (x : nat) (y : nat) : bool =
+  match x with
+  | O ⇒
+    match y with
+    | O ⇒ true
+    | S _ ⇒ false
+    end
+  | S x ⇒
+    match y with
+    | O ⇒ true
+    | S y ⇒ x >= y
+    end
+  end
+
+program ltn (x : nat) (y : nat) : bool =
+  match x with
+  | O ⇒
+    match y with
+    | O ⇒ false
+    | S y ⇒ true
+    end
+  | S x ⇒
+    match y with
+    | O ⇒ false
+    | S y ⇒ x < y
+    end
+  end
+
+program gtn (x : nat) (y : nat) : bool =
+  match x with
+  | O ⇒ false
+  | S x ⇒
+    match y with
+    | O ⇒ true
+    | S y ⇒ x > y
+    end
+  end
+
+program eqn (x : nat) (y : nat) : bool =
+  match x with
+  | O ⇒
+    match y with
+    | O ⇒ true
+    | S _ ⇒ false
+    end
+  | S x ⇒
+    match y with
+    | O ⇒ false
+    | S y ⇒ x == y
+    end
+  end
+
+program pred (x : nat) : nat =
+  match x with
+  | O ⇒ O
+  | S x ⇒ x
+  end
+
+program addn (x : nat) (y : nat) : nat =
+  match x with
+  | O ⇒ y
+  | S x ⇒ S (x + y)
+  end
+
+program subn (x : nat) (y : nat) : nat =
+  match y with
+  | O ⇒ x
+  | S y ⇒ (pred x) - y
+  end
+
+program muln (x : nat) (y : nat) : nat =
+  match x with
+  | O ⇒ O
+  | S x ⇒ y + x * y
+  end
+
+program divn (x : nat) (y : nat) : nat =
+  if x < y then O
+  else S ((x - y) / y)
+
+program modn (x : nat) (y : nat) : nat =
+  x - ((x / y) * y)
+
+
+-- ———————————————————————————————————————————————
+-- strings
+-- ———————————————————————————————————————————————
+inductive char : U =
+| Char of (n : nat) 
+
+inductive string : U =
+| EmptyString
+| String of (c : char) (s : string)
+
+program cats (s1 : string) (s2 : string) : string =
+  match s1 with
+  | EmptyString ⇒ s2
+  | String c s1 ⇒ String c (s1 ^ s2)
+  end
+
+program strlen (s : string) : nat =
+  match s with
+  | EmptyString ⇒ 0
+  | String _ s ⇒ S (strlen s)
+  end
+
+
+-- ———————————————————————————————————————————————
+-- lists (linear + none-linear)
+-- ———————————————————————————————————————————————
+inductive list‹s,t› (A : Type‹s›) : Type‹t› =
+| nil
+| cons of (hd : A) (tl : list‹s,t› A)
+
+program len‹s,t› {A : Type‹s›} (xs : list‹_,t› A) : nat ⊗ list‹_,t› A =
+  match xs with
+  | nil ⇒ ⟨0, nil⟩
+  | x :: xs ⇒
+    match len _ xs with
+    | ⟨n, xs⟩ ⇒ ⟨S n, x :: xs⟩
+    end
+  end
+
+program append‹s,t› {A : Type‹s›} (xs : list‹_,t› A) : list‹_,t› A ⊸ list A =
+ln ys ⇒
+  match xs with
+  | nil ⇒ ys
+  | x :: xs ⇒ x :: append _ xs ys
+  end
+
+
+-- ———————————————————————————————————————————————
+-- standard IO channels
+-- ———————————————————————————————————————————————
+logical stdin_rec (_ : unit) : proto =
+  ⇑(b : bool) →
+   match b with
+   | true ⇒ ⇓(string) → stdin_rec ()
+   | false ⇒ •
+   end
+
+logical stdout_rec (_ : unit) : proto =
+  ⇑(b : bool) →
+   match b with
+   | true ⇒ ⇑(string) → stdout_rec ()
+   | false ⇒ •
+   end
+
+logical stderr_rec (_ : unit) : proto =
+  ⇑(b : bool) →
+   match b with
+   | true ⇒ ⇑(string) → stderr_rec ()
+   | false ⇒ •
+   end
+
+logical stdin_t  : proto = stdin_rec ()
+logical stdout_t : proto = stdout_rec ()
+logical stderr_t : proto = stderr_rec ()
+
+program readline (_ : unit) : IO string =
+  let ch ⇐ open stdin in
+  let ch ⇐ send ch true in
+  let ⟨s, ch⟩ ⇐ recv ch in
+  let ch ⇐ send ch false in
+  let _ ⇐ close ch in
+  return s
+
+program print (s : string) : IO unit =
+  let ch ⇐ open stdout in
+  let ch ⇐ send ch true in
+  let ch ⇐ send ch s in
+  let ch ⇐ send ch false in
+  close ch
+
+program prerr (s : string) : IO unit =
+  let ch ⇐ open stderr in
+  let ch ⇐ send ch true in
+  let ch ⇐ send ch s in
+  let ch ⇐ send ch false in
+  close ch

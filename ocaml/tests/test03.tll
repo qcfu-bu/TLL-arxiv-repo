@@ -1,0 +1,45 @@
+inductive List‹s,t› (A : Type‹s›) : Type‹t› =
+| Nil
+| Cons of (hd : A) (tl : List‹s,t› A)
+
+program Len‹s,t› {A : Type‹s›} (xs : List‹_,t› A) : nat ⊗ List‹_,t› A =
+  match xs with
+  | Nil ⇒ ⟨0, Nil⟩
+  | Cons x xs ⇒
+    match Len A xs with
+    | ⟨n, xs⟩ ⇒ ⟨S n, Cons x xs⟩
+    end
+  end
+
+program Append‹s,t› {A : Type‹s›} (xs : List‹_,t› A) : List‹_,t› A ⊸ List A =
+ln ys ⇒
+  match xs with
+  | Nil ⇒ ys
+  | Cons x xs ⇒ Cons x (Append _ xs ys)
+  end
+
+logical Snd‹s,t› {A : Type‹s›} {B : Type‹t›} (m : A ⊗ B) : B =
+  let ⟨_, b⟩ = m in b
+
+logical Len_id‹s,t› (A : Type‹s›) (ls : List‹_,t› A) :
+  ls ≡ Snd _ _ (Len _ ls) =
+  match ls as ls0 in
+    ls0 ≡ Snd _ _ (Len _ ls0)
+  with
+  | Nil ⇒ refl
+  | Cons x xs ⇒
+    let p = Len _ xs in
+    match p as p0 in
+      Len _ xs ≡ p0 →
+      Cons x xs ≡ (Snd _ _
+                     match p0 with
+                     | ⟨n, xs0⟩ ⇒ ⟨S n, Cons x xs0⟩
+                     end)
+    with
+    | ⟨a, b⟩ ⇒ fn e0 ⇒
+      let H = 
+        rew [ p0, _ ⇒ xs ≡ Snd _ _ p0 ] e0 in Len_id A xs
+      in
+      rew [ l, _ ⇒ Cons x xs ≡ Cons x l ] H in refl
+    end refl
+  end

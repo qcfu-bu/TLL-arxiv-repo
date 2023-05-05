@@ -1,0 +1,53 @@
+inductive ref_msg : U = GET | SET | FREE
+
+logical ref_t (A : U) : proto =
+  ⇓(msg : ref_msg) →
+    match msg with
+    | GET ⇒ ⇑(A) → ref_t A
+    | SET ⇒ ⇓(A) → ref_t A
+    | FREE ⇒ ∙
+    end
+
+logical ref (A : U) : L = hc⟨ ref_t A ⟩
+
+program ref_handler {A : U} (m : A) (c0 : ch⟨ ref_t A ⟩) : IO unit =
+  let ⟨msg, c0⟩ ⇐ recv c0 in
+  match msg as msg0 in
+    ch⟨match msg0 with
+       | GET ⇒ ⇑(A) → ref_t A 
+       | SET ⇒ ⇓(A) → ref_t A
+       | FREE ⇒ ∙
+       end⟩ ⊸ IO unit
+  with
+  | GET ⇒ ln c ⇒
+    let c ⇐ send c m in
+    ref_handler _ m c
+  | SET ⇒ ln c ⇒
+    let ⟨m, c⟩ ⇐ recv c in
+    ref_handler _ m c
+  | FREE ⇒ ln c ⇒ close c
+  end c0
+
+program mk_ref {A : U} (m : A) : IO (ref A) =
+  fork (c0 : ch⟨ ref_t A ⟩ ) in
+  ref_handler _ m c0
+
+program set_ref {A : U} (m : A) (r : ref A) : IO (ref A) =
+  let r ⇐ send r SET in
+  send r m
+
+program get_ref {A : U} (r : ref A) : IO (A ⊗ ref A) =
+  let r ⇐ send r GET in
+  recv r
+
+program free_ref {A : U} (r : ref A) : IO unit =
+  let r ⇐ send r FREE in
+  close r
+
+program main : IO unit =
+  let r ⇐ mk_ref _ "hello " in
+  let ⟨s0, r⟩ ⇐ get_ref _ r in
+  let r ⇐ set_ref _ "world\n" r in
+  let ⟨s1, r⟩ ⇐ get_ref _ r in
+  free_ref _ r;
+  print (s0 ^ s1)

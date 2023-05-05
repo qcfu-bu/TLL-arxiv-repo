@@ -1,0 +1,83 @@
+program digits : list‹_,U› _ =
+  "0" :: "1" :: "2" :: "3" :: "4" :: "5" :: "6" :: "7" :: "8" :: "9" :: nil
+
+program get_at {A : U} (n : nat) (xs : list‹_,U› A) (a : A) : A =
+  match n with
+  | O ⇒
+    match xs with
+    | nil ⇒ a
+    | x :: _ ⇒ x
+    end
+  | S n ⇒ 
+    match xs with
+    | nil ⇒ a
+    | _ :: xs ⇒ get_at _ n xs a
+    end
+  end
+
+program string_of_digit (n : nat) : string =
+  get_at _ n digits "" 
+
+program string_of_nat (n : nat) : string =
+  let s = string_of_digit (n % 10) in
+  let n = n / 10 in
+  if 0 < n then
+    string_of_nat n ^ s
+  else s
+
+program pow (n m : nat) : nat =
+  match m with
+  | O ⇒ 1
+  | S m ⇒ n * pow n m
+  end
+
+-- ———————————————————————————————————————————————
+-- Diffie–Hellman key exchange
+-- secrets a and b are synchronized irrelevantly
+-- ———————————————————————————————————————————————
+logical DH (p g : nat) : proto =
+  ⇑{a : nat} → ⇑(A : nat) → ⇑{ A ≡ pow g a % p } →
+  ⇓{b : nat} → ⇓(B : nat) → ⇓{ B ≡ pow g b % p } → •
+
+logical DH_ch (p g : nat) : L = ch⟨ DH p g ⟩
+logical DH_hc (p g : nat) : L = hc⟨ DH p g ⟩
+
+-- alice only knows secret a
+program alice (a : nat) (p g : nat) (ch : DH_ch p g) : IO unit =
+  let ch ⇐ send ch a in
+  let ch ⇐ send ch (pow g a % p) in
+  let ch ⇐ send ch refl in
+  let ⟨{b}, ch⟩ ⇐ recv ch in
+  let ⟨B, ch⟩ ⇐ recv ch in
+  let ⟨{pf}, ch⟩ ⇐ recv ch in
+  let s = pow B a % p in
+  close ch; print (string_of_nat s ^ "\n")
+
+-- bob only knows secret b
+program bob (b : nat) (p g : nat) (ch : DH_hc p g) : IO unit =
+  let ⟨{a}, ch⟩ ⇐ recv ch in
+  let ⟨A, ch⟩ ⇐ recv ch in
+  let ⟨{pf}, ch⟩ ⇐ recv ch in
+  let ch ⇐ send ch b in
+  let ch ⇐ send ch (pow g b % p) in
+  let ch ⇐ send ch refl in
+  let s = pow A b % p in
+  close ch; print (string_of_nat s ^ "\n")
+
+program key_exchange (_ : unit) : IO unit =
+  let p = 23 in
+  let g = 5 in
+  let c ⇐
+    fork (c : DH_ch p g) in
+      alice 4 p g c
+  in
+  let c0 ⇐
+    fork (c0 : ch⟨⇓(DH_hc p g) → •⟩) in
+      let ⟨c, c0⟩ ⇐ recv c0 in
+      close c0; bob 3 p g c
+  in
+  let c0 ⇐ send c0 c in
+  close c0
+
+program main : IO unit =
+  key_exchange (); sleep 1

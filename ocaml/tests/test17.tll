@@ -1,0 +1,108 @@
+program digits : list‹_,U› _ =
+  "0" :: "1" :: "2" :: "3" :: "4" :: "5" :: "6" :: "7" :: "8" :: "9" :: nil
+
+program get_at {A : U} (n : nat) (xs : list‹_,U› A) (a : A) : A =
+  match n with
+  | O ⇒
+    match xs with
+    | nil ⇒ a
+    | x :: _ ⇒ x
+    end
+  | S n ⇒ 
+    match xs with
+    | nil ⇒ a
+    | _ :: xs ⇒ get_at _ n xs a
+    end
+  end
+
+program string_of_digit (n : nat) : string =
+  get_at _ n digits "" 
+
+program string_of_nat (n : nat) : string =
+  let s = string_of_digit (n % 10) in
+  let n = n / 10 in
+  if 0 < n then
+    string_of_nat n ^ s
+  else s
+
+program gcd (a b : nat) : nat =
+  match b with
+  | O ⇒ a
+  | S _ ⇒ gcd b (a % b)
+  end
+
+program lcm (a b : nat) : nat = (a * b) / gcd a b
+
+program powm (a b m : nat) : nat =
+  match b with
+  | O ⇒ 1
+  | S b ⇒ (a * powm a b m) % m
+  end
+
+logical coprime (a b : nat) : U = gcd a b ≡ 1
+
+-- ———————————————————————————————————————————————
+-- Rivest–Shamir–Adleman public-key
+-- ———————————————————————————————————————————————
+logical RSA : proto =
+  ⇑{x : nat} → ⇑{y : nat} →
+  ⇑(n : nat) → ⇑{n ≡ x * y} →
+  ⇑{tot : nat} → ⇑{tot ≡ lcm (x - 1) (y - 1)} →
+  ⇑(e : nat) → ⇑{coprime e tot} → ⇑{1 < e ≡ true} → ⇑{e < tot ≡ true} →
+  ⇓{P0 : nat} → ⇓(C : nat) → ⇓{C ≡ powm P0 e n} → •
+
+logical RSA_ch : L = ch⟨ RSA ⟩
+logical RSA_hc : L = hc⟨ RSA ⟩
+
+program server (ch : RSA_ch) : IO unit =
+  let x = 61 in
+  let y = 53 in
+  let n = x * y in
+  let tot = lcm (x - 1) (y - 1) in
+  let e = 17 in
+  let d = 413 in
+  let ch ⇐ send ch x in
+  let ch ⇐ send ch y in
+  let ch ⇐ send ch n in
+  let ch ⇐ send ch refl in
+  let ch ⇐ send ch tot in
+  let ch ⇐ send ch refl in
+  let ch ⇐ send ch e in
+  let ch ⇐ send ch refl in
+  let ch ⇐ send ch refl in
+  let ch ⇐ send ch refl in
+  let ⟨{P0}, ch⟩ ⇐ recv ch in
+  let ⟨C, ch⟩ ⇐ recv ch in
+  let ⟨{pf}, ch⟩ ⇐ recv ch in
+  let P1 = powm C d n in
+  close ch; print (string_of_nat P1 ^ "\n")
+
+program client (ch : RSA_hc) : IO unit =
+  let P0 = 123 in
+  let ⟨{x}, ch⟩ ⇐ recv ch in
+  let ⟨{y}, ch⟩ ⇐ recv ch in
+  let ⟨n, ch⟩ ⇐ recv ch in
+  let ⟨{pf1}, ch⟩ ⇐ recv ch in
+  let ⟨{tot}, ch⟩ ⇐ recv ch in
+  let ⟨{pf2}, ch⟩ ⇐ recv ch in
+  let ⟨e, ch⟩ ⇐ recv ch in
+  let ⟨{pf3}, ch⟩ ⇐ recv ch in
+  let ⟨{pf4}, ch⟩ ⇐ recv ch in
+  let ⟨{pf5}, ch⟩ ⇐ recv ch in
+  let ch ⇐ send ch P0 in
+  let ch ⇐ send ch (powm P0 e n) in
+  let ch ⇐ send ch refl in
+  close ch
+
+program main : IO unit =
+  let c ⇐
+    fork (c : RSA_ch) in server c
+  in
+  let c0 ⇐
+    fork (c0 : ch⟨⇓(RSA_hc) → •⟩) in
+      let ⟨c, c0⟩ ⇐ recv c0 in
+      close c0; client c
+  in
+  let c0 ⇐ send c0 c in
+  close c0; sleep 1
+

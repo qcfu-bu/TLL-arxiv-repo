@@ -1,0 +1,8 @@
+program main : IO unit =
+  let x = 0 in
+  let ch ⇐
+    fork (ch : ch⟨ • ⟩) in
+      let y = x in
+      close ch
+  in
+  close ch

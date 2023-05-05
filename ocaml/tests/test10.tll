@@ -1,0 +1,7 @@
+logical thrm (n : nat) : n ≡ n + 0 =
+  match n as n0 in (n0 ≡ n0 + 0) with
+  | O ⇒ refl
+  | S n1 ⇒ rew [ x, _ ⇒ S n1 ≡ x ] (thrm (S n1)) in refl
+  end
+
+logical ex : S 0 ≡ pred 2 = refl

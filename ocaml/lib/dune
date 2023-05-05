@@ -1,0 +1,9 @@
+(library
+ (name TLL)
+ (libraries ppxlib ppx_deriving fmt sedlex menhirLib bindlib)
+ (preprocess
+  (pps ppx_deriving.std sedlex.ppx)))
+
+(menhir
+ (flags --table --canonical)
+ (modules parser0))

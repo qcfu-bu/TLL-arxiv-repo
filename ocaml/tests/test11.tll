@@ -1,0 +1,93 @@
+program split‹t› (zs : list‹_,t› nat) : list‹_,t› nat ⊗ list‹_,t› nat =
+  match zs with
+  | nil ⇒ ⟨nil, nil⟩
+  | x :: zs ⇒
+    match zs with
+    | nil ⇒ ⟨x :: nil, nil⟩
+    | y :: zs ⇒
+      let ⟨xs, ys⟩ = split zs in
+      ⟨x :: xs, y :: ys⟩
+    end
+  end
+
+program merge‹t› (xs : list‹_,t› nat) : list‹_,t› nat ⊸ list‹_,t› nat =
+ln ys ⇒
+  match xs with
+  | nil ⇒ ys
+  | x :: xs0 ⇒
+    match ys with
+    | nil ⇒ x :: xs0
+    | y :: ys0 ⇒
+      if x <= y then
+        x :: merge xs0 (y :: ys0)
+      else
+        y :: merge (x :: xs0) ys0
+    end
+  end
+
+program msort‹t› (zs : list‹_,t› nat) : list‹_,t› nat =
+  match zs with
+  | nil ⇒ nil
+  | x :: zs ⇒
+    match zs with
+    | nil ⇒ x :: nil
+    | y :: zs ⇒
+      let ⟨xs, ys⟩ = split (x :: y :: zs) in
+      merge (msort xs) (msort ys)
+    end
+  end
+
+logical cmsort_ch‹t› : L = ch⟨ ⇑(list‹_,t› nat) → • ⟩
+
+program cmsort_worker‹t› (n : nat) (zs : list‹_,t› nat) : cmsort_ch‹t› ⊸ IO unit =
+ln c ⇒
+  match n with
+  | O ⇒ let c ⇐ send c (msort zs) in close c
+  | S n ⇒
+    match zs with
+    | nil ⇒ let c ⇐ send c nil in close c
+    | z0 :: zs0 ⇒
+      match zs0 with
+      | nil ⇒ let c ⇐ send c nil in close c
+      | z1 :: zs1 ⇒ 
+        let ⟨xs0, ys0⟩ = split (z0 :: z1 :: zs1) in
+        let r1 ⇐ fork (r1 : cmsort_ch) in cmsort_worker n xs0 r1 in
+        let r2 ⇐ fork (r2 : cmsort_ch) in cmsort_worker n ys0 r2 in
+        let ⟨xs1, r1⟩ ⇐ recv r1 in
+        let ⟨ys1, r2⟩ ⇐ recv r2 in
+        let zs = merge xs1 ys1 in
+        let c ⇐ send c zs in
+        close r1; close r2; close c
+      end
+    end
+  end
+
+program cmsort‹t› (zs0 : list‹_,t› nat) : IO (list‹_,t› nat) =
+  let c ⇐ fork (c : cmsort_ch) in cmsort_worker 4 zs0 c in
+  let ⟨zs1, c⟩ ⇐ recv c in
+  close c;
+  return zs1
+
+program mkList‹t› (n : nat) : list‹_,t› nat =
+  match n with
+  | O ⇒ nil
+  | S n0 ⇒ n :: mkList n0
+  end
+
+program free {A : U} (ls : list‹_,L› A) : unit =
+  match ls with
+  | nil ⇒ ()
+  | _ :: ls ⇒ free _ ls
+  end
+
+-- program main : IO unit =
+--   let test = mkList‹L› 400000 in
+--   let sorted = msort test in
+--   let _ = free _ sorted in
+--   return ()
+  
+program main : IO unit =
+  let test = mkList‹L› 400000 in
+  let sorted ⇐ cmsort test in
+  let _ = free _ sorted in
+  return ()

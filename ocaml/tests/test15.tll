@@ -1,0 +1,12 @@
+inductive Vec‹s,t› (n : nat) (A : Type‹s›) : Type‹t› =
+| Nil  of {e : 0 ≡ n}
+| Cons of {n0 : nat} {e : S n0 ≡ n} (hd : A) (tl : Vec‹s,t› n0 A)
+
+program Append‹s,t› {m n : nat} {A : Type‹s›} (xs : Vec‹_,t› m A) : Vec‹_,t› n A ⊸ Vec (m + n) A =
+ln ys ⇒
+  match xs with
+  | Nil e ⇒ rew [ m0, _ ⇒ Vec (m0 + n) A ] e in ys
+  | Cons n0 e hd tl ⇒
+    rew [ m0, _ ⇒ Vec (m0 + n) A ] e in
+    Cons (n0 + n) refl hd (Append _ _ _ tl ys)
+  end

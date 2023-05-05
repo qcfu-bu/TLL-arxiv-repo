@@ -1,0 +1,39 @@
+inductive List‹s,t› (A : Type‹s›) : Type‹t› =
+| Nil
+| Cons of (hd : A) (tl : List‹s,t› A)
+
+logical len‹s,t› {A : Type‹s›} (xs : List‹s,t› A) : nat =
+  match xs with
+  | Nil ⇒ 0
+  | Cons hd tl ⇒ 1 + len _ tl
+  end
+
+program append‹s,t› {A : Type‹s›} (xs : List‹_,t› A) : List A ⊸ List A =
+ln ys ⇒
+  match xs with
+  | Nil ⇒ ys
+  | Cons x xs ⇒ Cons x (append _ xs ys)
+  end
+
+logical append_len‹s,t› (A : Type‹s›) (xs ys : List‹_,t› A) :
+  len _ (append _ xs ys) ≡ (len _ xs) + (len _ ys) =
+  match xs as xs0 in
+    len _ (append _ xs0 ys) ≡ len _ xs0 + len _ ys
+  with
+  | Nil ⇒ refl
+  | Cons x xs0 ⇒
+    rew [ n, _ ⇒ S (len _ (append _ xs0 ys)) ≡ S n ]
+      append_len _ xs0 ys in refl
+  end
+
+logical list‹s› {A : Type‹s›} : U = List‹_,U› A
+
+program ls0 : list _ = (Cons 0 Nil)
+program ls1 : list _ = (Cons 0 Nil)
+program ls2 : _ = append _ ls0 ls1
+
+program id‹s› {A : Type‹s›} (x : A) : A = x
+
+program main : IO unit =
+  let s ⇐ readline () in 
+  id _ (print (id _ s))
