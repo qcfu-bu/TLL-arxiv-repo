@@ -1,6 +1,6 @@
-# OCaml implementation of TLL
+# TLL Compiler
 
-## Dependencies
+## OCaml Dependencies
 - `dune`
 - `ppxlib`
 - `ppx_deriving`
