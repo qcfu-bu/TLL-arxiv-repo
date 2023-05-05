@@ -1,3 +1,5 @@
+(* This file defines the typing rules of MLTT. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS mltt_ctx mltt_conf.
@@ -6,6 +8,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* Alternative typing rules for MLTT.
+
+   Notice that in the mltt0_lam rule, there is mltt0_type Γ A Ty.
+   This serves to generate an extra hypothesis for A during induction.
+   We will show later that the alternative and standard presentations
+   are equivalent. *)
 Inductive mltt0_type : mltt_ctx -> term -> term -> Prop :=
 | mltt0_axiom Γ :
   mltt0_wf Γ ->
@@ -86,6 +94,11 @@ Lemma mltt0_type_wf Γ m A : mltt0_type Γ m A -> mltt0_wf Γ.
 Proof with eauto. elim=>{Γ m A}... Qed.
 #[global] Hint Resolve mltt0_type_wf.
 
+(* Standard typing rules for MLTT.
+   
+   Notice that Γ ⊢ A : Ty is missing in the mltt_lam rule. The
+   hypothesis for A will be missing when performing induction directly
+   over the derivation of the standard typing judgment. *)
 Reserved Notation "Γ ⊢ m : A" (at level 50, m, A at next level).
 Inductive mltt_type : mltt_ctx -> term -> term -> Prop :=
 | mltt_axiom Γ :
@@ -153,6 +166,7 @@ Inductive mltt_type : mltt_ctx -> term -> term -> Prop :=
   Γ ⊢ m : B
 where "Γ ⊢ m : A" := (mltt_type Γ m A)
 
+(* context well-formed (Γ ⊢) *)
 with mltt_wf : mltt_ctx -> Prop :=
 | mltt_wf_nil : mltt_wf nil
 | mltt_wf_cons Γ A :
@@ -163,6 +177,7 @@ with mltt_wf : mltt_ctx -> Prop :=
 Scheme mltt_type_mut := Induction for mltt_type Sort Prop
 with mltt_wf_mut := Induction for mltt_wf Sort Prop.
 
+(* We assume that well-typed MLTT terms are strongly normalizing. *)
 Axiom mltt_sn : forall Γ m A, Γ ⊢ m : A -> sn mltt_step m.
 
 Lemma mltt_type_wf Γ m A : Γ ⊢ m : A -> mltt_wf Γ.
@@ -172,6 +187,12 @@ Proof with eauto.
 Qed.
 #[global] Hint Resolve mltt_type_wf.
 
+(* The standard and alternative presentations of MLTT typing are
+   isomorphic. The following lemma proves the standard => alternative
+   direction. The alternative => standard direction is trivial. So
+   when the hypothesis for A of λ-abstractions is needed during
+   induction, we first convert standard to alternative before
+   performing induction. *)
 Lemma mltt_mltt0_type Γ m A : Γ ⊢ m : A -> mltt0_type Γ m A.
 Proof with eauto using mltt0_type, mltt0_wf.
   move:Γ m A. apply:(@mltt_type_mut _ (fun Γ wf => mltt0_wf Γ))...

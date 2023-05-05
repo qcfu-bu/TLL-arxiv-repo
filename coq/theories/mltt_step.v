@@ -1,3 +1,5 @@
+(* This files defines the operational semantics of MLTT. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS mltt_ast mltt_ctx.
@@ -6,6 +8,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* small-step relation *)
 Reserved Notation "m ~> n" (at level 50).
 Inductive mltt_step : term -> term -> Prop :=
 | mltt_step_piL A A' B :

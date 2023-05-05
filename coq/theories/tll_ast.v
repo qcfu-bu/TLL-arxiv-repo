@@ -1,3 +1,5 @@
+(* This file defines the abstract syntax of TLL. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS.
@@ -10,9 +12,11 @@ Declare Scope sort_scope.
 Delimit Scope sort_scope with srt.
 Open Scope sort_scope.
 
+(* The two sorts of TLL. *)
 Inductive sort : Type := U | L.
 Bind Scope sort_scope with sort.
 
+(* The sort order relation. *)
 Inductive sort_leq : sort -> sort -> Prop :=
 | sort_leqU s :
   sort_leq U s
@@ -20,6 +24,8 @@ Inductive sort_leq : sort -> sort -> Prop :=
   sort_leq L L.
 Notation "s ⊑ t" := (sort_leq s t) (at level 30) : sort_scope.
 
+(* Abstract syntax tree of TLL.
+   Variables are represented using DeBrujin indices. *)
 Inductive term : Type :=
 | Var (x : var)
 | Sort (s : sort)
@@ -37,17 +43,20 @@ Inductive term : Type :=
 | APair (m n : term) (s : sort) (* (m, n)s *)
 | Fst (m : term) (* π1 m *)
 | Snd (m : term) (* π2 m *)
-| Id (A m n : term)
+| Id (A m n : term) (* m =A n *)
 | Refl (m : term)
 | Rw (A : {bind 2 of term}) (H P : term) (* R=([x,p]A,H,P) *)
-| Box
-| Ptr (l : nat).
+| Box (* ◻ *)
+| Ptr (l : nat) (* *l *).
 
+(* Derive basic syntactic lemmas using autosubst. *)
 #[global] Instance Ids_term : Ids term. derive. Defined.
 #[global] Instance Rename_term : Rename term. derive. Defined.
 #[global] Instance Subst_term : Subst term. derive. Defined.
 #[global] Instance substLemmas_term : SubstLemmas term. derive. Qed.
 
+(* Alternative representation of sort order.
+   Proof for sort order property stated in Appendix. *)
 Lemma sort_leq_equiv s t :
   ((t = U) -> (s = U)) <-> s ⊑ t.
 Proof with eauto using sort_leq.

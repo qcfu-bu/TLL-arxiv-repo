@@ -1,3 +1,5 @@
+(* This files presents the substitution lemma for MLTT. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS mltt_weak.
@@ -8,6 +10,7 @@ Unset Printing Implicit Defensive.
 
 Reserved Notation "Γ1 ⊢ σ ⊣ Γ2" (at level 50, σ, Γ2 at next level).
 
+(* Relation to strengthen induction for simultaneous substitution. *)
 Inductive mltt_agree_subst :
   mltt_ctx -> (var -> term) -> mltt_ctx -> Prop :=
 | mltt_agree_subst_nil σ :
@@ -78,6 +81,7 @@ Proof with eauto using mltt_wf.
   apply: mltt_wf_cons...
 Qed.
 
+(* Simultaneous substitution lemma. *)
 Lemma mltt_substitution Γ1 Γ2 m A σ :
   Γ2 ⊢ m : A -> Γ1 ⊢ σ ⊣ Γ2 -> Γ1 ⊢ m.[σ] : A.[σ].
 Proof with eauto using mltt_agree_subst, mltt_type.
@@ -139,6 +143,7 @@ Proof with eauto using mltt_agree_subst, mltt_type.
     apply: mltt_agree_subst_wf_cons... }
 Qed.
 
+(* Single variable substitution lemma. *)
 Lemma mltt_subst Γ m n A B :
   (A :: Γ) ⊢ m : B -> Γ ⊢ n : A -> Γ ⊢ m.[n/] : B.[n/].
 Proof with eauto using mltt_agree_subst_refl.
@@ -148,6 +153,7 @@ Proof with eauto using mltt_agree_subst_refl.
   by asimpl.
 Qed.
 
+(* Alternative statement more suitable for certain Coq tactics *)
 Lemma mltt_esubst Γ m m' n A B B' :
   m' = m.[n/] ->
   B' = B.[n/] ->

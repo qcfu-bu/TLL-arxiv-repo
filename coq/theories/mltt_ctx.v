@@ -1,3 +1,5 @@
+(* This files defines the contexts of MLTT. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Import AutosubstSsr ARS mltt_ast.
@@ -8,6 +10,7 @@ Unset Printing Implicit Defensive.
 
 Definition mltt_ctx := seq term.
 
+(* mltt_has Γ x A represents (x : A) ∈ Γ *)
 Inductive mltt_has :
   mltt_ctx -> var -> term -> Prop :=
 | sta_has_O Γ A :

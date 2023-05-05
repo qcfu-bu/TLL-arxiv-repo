@@ -1,3 +1,5 @@
+(* This file presents the weakening lemma for MLTT. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS mltt_ctx mltt_type mltt_conf.
@@ -6,6 +8,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* Relation to strengthen induction for generalized renaming lemma. *)
 Inductive mltt_agree_ren : (var -> var) ->
   mltt_ctx -> mltt_ctx -> Prop :=
 | mltt_agree_ren_nil ξ :
@@ -58,6 +61,7 @@ Proof with eauto using mltt_wf.
   apply: mltt_wf_cons...
 Qed.
 
+(* Generalized renaming lemma. *)
 Lemma mltt_rename Γ Γ' m A ξ :
   Γ ⊢ m : A -> mltt_agree_ren ξ Γ Γ' -> Γ' ⊢ m.[ren ξ] : A.[ren ξ].
 Proof with eauto using mltt_type, mltt_wf, mltt_agree_ren.
@@ -144,6 +148,7 @@ Proof with eauto using mltt_agree_ren, mltt_agree_ren_refl.
       apply: mltt_rename... } }
 Qed.
 
+(* Weakening lemma. *)
 Lemma mltt_weaken Γ m A B :
   Γ ⊢ m : A ->
   Γ ⊢ B : Ty ->
@@ -152,6 +157,7 @@ Proof with eauto using mltt_agree_ren, mltt_agree_ren_refl.
   move=>tym tyB. apply: mltt_rename...
 Qed.
 
+(* Alternative statement more suitable for certain Coq tactics *)
 Lemma mltt_eweaken Γ m m' A A' B :
   m' = m.[ren (+1)] ->
   A' = A.[ren (+1)] ->

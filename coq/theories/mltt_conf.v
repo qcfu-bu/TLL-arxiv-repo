@@ -1,3 +1,6 @@
+(* This file presents the confluence theorem for MLTT and various
+   congruence lemmas and corollaries of confluence. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
 Require Export AutosubstSsr ARS mltt_step.
@@ -6,6 +9,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* Parallel reduction for MLTT. *)
 Inductive pstep : term -> term -> Prop :=
 | pstep_var x :
   pstep (Var x) (Var x)
@@ -485,6 +489,7 @@ Proof with eauto using pstep_compat, psstep_reflexive, psstep_compat.
   move...
 Qed.
 
+(* Diamond property for parallel reduction. *)
 Lemma pstep_diamond m m1 m2 :
   pstep m m1 -> pstep m m2 -> exists2 m', pstep m1 m' & pstep m2 m'.
 Proof with eauto 6 using
@@ -608,6 +613,7 @@ Proof with eauto using pstep_refl, star.
   by apply: pstep_mltt_red.
 Qed.
 
+(* Confluence theorem for MLTT. *)
 Theorem confluence :
   confluent mltt_step.
 Proof with eauto using mltt_step, star.
