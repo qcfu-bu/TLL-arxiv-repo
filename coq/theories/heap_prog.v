@@ -1,14 +1,18 @@
+(* This file presents the heap progress theorem. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
-Require Export AutosubstSsr ARS ptr_step ptr_sr era_prog.
+Require Export AutosubstSsr ARS heap_step heap_sr erasure_prog.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Lemma ptr_step_merge H1 H1' H2 H m n :
+(* A heap reduction conducted on sub-heap H1 of H can be reframed as a
+   heap reduction conducted on the entire heap H. *)
+Lemma heap_step_merge H1 H1' H2 H m n :
   H1 ; m ~>> H1' ; n -> H1 ∘ H2 => H -> exists H' n', H ; m ~>> H' ; n'.
-Proof with eauto using ptr_step, pad, merge.
+Proof with eauto using heap_step, pad, merge.
   move=>st. elim: st H2 H=>{H1 H1' m n}.
   { move=>H m [|] l e H2 H0 mrg; subst.
     { exists (Lam0 Box m U :U H0).
@@ -31,10 +35,10 @@ Proof with eauto using ptr_step, pad, merge.
     have[H0'[nx st']]:=ihn _ _ mrg.
     exists H0'. exists (App m nx)... }
   { move=>H H' l m n s fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists (m.[Box/])... }
   { move=>H H' lf la m s fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists (m.[Ptr la/])... }
   { move=>H H' m m' t st ihm H2 H0 mrg.
     have[H1'[mx st']]:=ihm _ _ mrg.
@@ -65,10 +69,10 @@ Proof with eauto using ptr_step, pad, merge.
     have[H1'[mx st']]:=ihm _ _ mrg.
     exists H1'. exists (LetIn Box mx n)... }
   { move=>H H' lm x l n t fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists n.[Box,Ptr lm/]... }
   { move=>H H' lm ln l n t fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists n.[Ptr ln,Ptr lm/]... }
   { move=>H m n t l e H2 H0 mrg; subst.
     destruct t.
@@ -85,17 +89,17 @@ Proof with eauto using ptr_step, pad, merge.
     have[H1'[mx st']]:=ihm _ _ mrg.
     exists H1'. exists (Snd mx)... }
   { move=>H H' m n l t fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists m... }
   { move=>H H' m n l t fr H2 H0 mrg.
-    have[H4[fr' mrg']]:=free_merge fr mrg.
+    have[H4[fr' mrg']]:=lookup_merge fr mrg.
     exists H4. exists n... }
   { move=>H m H2 H0 mrg.
     exists H0. exists m... }
 Qed.
 
-Lemma free_pair0_canonical H H' m n l t :
-  wr_heap H -> free H l (Pair0 m n t) H' ->
+Lemma lookup_pair0_canonical H H' m n l t :
+  wr_heap H -> lookup H l (Pair0 m n t) H' ->
   exists lm, m = Ptr lm /\ n = Box.
 Proof with eauto.
   move=>wr. elim: wr H' m n l t=>{H}.
@@ -108,8 +112,8 @@ Proof with eauto.
   { move=>H wr ih H' m n l t fr. inv fr... }
 Qed.
 
-Lemma free_pair1_canonical H H' m n l t :
-  wr_heap H -> free H l (Pair1 m n t) H' ->
+Lemma lookup_pair1_canonical H H' m n l t :
+  wr_heap H -> lookup H l (Pair1 m n t) H' ->
   exists lm ln, m = Ptr lm /\ n = Ptr ln.
 Proof with eauto.
   move=>wr. elim: wr H' m n l t=>{H}.
@@ -122,10 +126,11 @@ Proof with eauto.
   { move=>H wr ih H' m n l t fr. inv fr... }
 Qed.
 
-Theorem ptr_prog H x y z A :
+(* Theorem 15 (Heap Progress) *)
+Theorem heap_prog H x y z A :
   H ; x ~ y ~ z : A -> wr_heap H ->
   (exists H' z', H ; z ~>> H' ; z') \/ (exists l, z = Ptr l).
-Proof with eauto using ptr_step.
+Proof with eauto using heap_step.
   move=>{H x y z A}[H x y z A].
   move e1:(nil)=>Γ. move e2:(nil)=>Δ er.
   elim: er H z e1 e2=>{Γ Δ x y A}.
@@ -142,38 +147,38 @@ Proof with eauto using ptr_step.
     { have[[H'[z' st]]|[l e]]:=ihm _ _ erefl erefl H4 wr.
       { left. exists H'. exists (App z' Box)... }
       { subst. have vl':=wr_resolve_ptr wr H4.
-        have vl:=era_dyn_val erm vl'.
-        have[A0[m0 e]]:=dyn_pi0_canonical (era_dyn_type erm) (convR _ _) vl. subst.
-        have[m'0 e]:=era_lam0_canonical erm. subst.
+        have vl:=erasure_program_val erm vl'.
+        have[A0[m0 e]]:=program_pi0_canonical (erasure_program_reflect erm) (convR _ _) vl. subst.
+        have[m'0 e]:=erasure_lam0_canonical erm. subst.
         inv H4. inv H5.
         { left. exists H'. exists m1.[Box/]... }
-        { exfalso. apply: free_wr_ptr... } } }
+        { exfalso. apply: lookup_wr_ptr... } } }
     { have[wr1 wr2]:=wr_merge_inv H5 wr.
       have//:=resolve_wr_box wr2 H9. }
     { inv H2.
-      { have vl:=wr_free_dyn_val H1 wr. inv vl. }
-      { have wr':=free_wr H1 wr.
+      { have vl:=wr_lookup_program_val H1 wr. inv vl. }
+      { have wr':=lookup_wr H1 wr.
         have[wr1 wr2]:=wr_merge_inv H7 wr'.
         have//:=resolve_wr_box wr2 H11. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ1 Δ2 Δ A B m m' n n' s mrg erm ihm ern ihn H z e1 e2 rs wr.
     subst; inv mrg. inv rs.
-    { have//:=era_box_form ern. }
+    { have//:=erasure_box_form ern. }
     { left. have[wr1 wr2]:=wr_merge_inv H5 wr.
       have[[H1'[m1 st1]]|[l1 e1]]:=ihm _ _ erefl erefl H8 wr1.
-      { have[H'[m0' st']]:=ptr_step_merge st1 H5.
+      { have[H'[m0' st']]:=heap_step_merge st1 H5.
         exists H'. exists (App m0' n0)... }
       { subst. have[[H2'[m2 st2]]|[l2 e2]]:=ihn _ _ erefl erefl H9 wr2.
-        { have[H'[m2' st']]:=ptr_step_merge st2 (merge_sym H5).
+        { have[H'[m2' st']]:=heap_step_merge st2 (merge_sym H5).
           exists H'. exists (App (Ptr l1) m2')... }
         { subst.
           have vm':=wr_resolve_ptr wr1 H8.
-          have vm:=era_dyn_val erm vm'.
-          have[A0[m0 e]]:=dyn_pi1_canonical (era_dyn_type erm) (convR _ _) vm. subst.
-          have[m1 e]:=era_lam1_canonical erm. subst. inv H8. inv H7.
-          { have[H6[fr' mrg']]:=free_merge H4 H5.
+          have vm:=erasure_program_val erm vm'.
+          have[A0[m0 e]]:=program_pi1_canonical (erasure_program_reflect erm) (convR _ _) vm. subst.
+          have[m1 e]:=erasure_lam1_canonical erm. subst. inv H8. inv H7.
+          { have[H6[fr' mrg']]:=lookup_merge H4 H5.
             exists H6. exists m2.[Ptr l2/]... }
-          { exfalso. apply: free_wr_ptr... } } } }
+          { exfalso. apply: lookup_wr_ptr... } } } }
     { right. exists l... } }
   { move=>Γ Δ A B m m' n t tyS erm ihm tyn H z e1 e2 rs wr; subst. inv rs.
     { have[[H'[m1 st]]|[l e]]:=ihm _ _ erefl erefl H4 wr.
@@ -186,10 +191,10 @@ Proof with eauto using ptr_step.
     subst; inv mrg. inv rs.
     { left. have[wr1 wr2]:=wr_merge_inv H8 wr.
       have[[H1'[m1 st1]]|[l1 e1]]:=ihm _ _ erefl erefl H9 wr1.
-      { have[H'[m0' st']]:=ptr_step_merge st1 H8.
+      { have[H'[m0' st']]:=heap_step_merge st1 H8.
         exists H'. exists (Pair1 m0' n0 t)... }
       { subst. have[[H2'[m2 st2]]|[l2 e2]]:=ihn _ _ erefl erefl H10 wr2.
-        { have[H'[n0' st']]:=ptr_step_merge st2 (merge_sym H8).
+        { have[H'[n0' st']]:=heap_step_merge st2 (merge_sym H8).
           exists H'. exists (Pair1 (Ptr l1) n0' t)... }
         { subst.
           exists (Pair1 (Ptr l1) (Ptr l2) t :{t} H).
@@ -199,33 +204,33 @@ Proof with eauto using ptr_step.
     subst; inv mrg. inv rs.
     { left. have[wr1 wr2]:=wr_merge_inv H5 wr.
       have[[H1'[m1 st]]|[l e]]:=ihm _ _ erefl erefl H8 wr1.
-      { have[H'[m0' st']]:=ptr_step_merge st H5.
+      { have[H'[m0' st']]:=heap_step_merge st H5.
         exists H'. exists (LetIn Box m0' n0)... }
       { subst.
         have vm':=wr_resolve_ptr wr1 H8.
-        have vm:=era_dyn_val erm vm'.
-        have[m1[m2 e]]:=dyn_sig0_canonical (era_dyn_type erm) (convR _ _) vm. subst.
-        have[m0 e]:=era_pair0_canonical erm. subst. inv H8. inv H7.
-        { have[H6[fr' mrg']]:=free_merge H4 H5.
-          have[lm[e _]]:=free_pair0_canonical wr fr'. subst.
+        have vm:=erasure_program_val erm vm'.
+        have[m1[m2 e]]:=program_sig0_canonical (erasure_program_reflect erm) (convR _ _) vm. subst.
+        have[m0 e]:=erasure_pair0_canonical erm. subst. inv H8. inv H7.
+        { have[H6[fr' mrg']]:=lookup_merge H4 H5.
+          have[lm[e _]]:=lookup_pair0_canonical wr fr'. subst.
           exists H6. exists (n0.[Box,Ptr lm/])... }
-        { exfalso. apply: free_wr_ptr... } } }
+        { exfalso. apply: lookup_wr_ptr... } } }
     { right. exists l... } }
   { move=>Γ Δ1 Δ2 Δ A B C m m' n n' s r1 r2 t mrg tyC erm ihm ern _ H z e1 e2 rs wr.
     subst; inv mrg. inv rs.
     { left. have[wr1 wr2]:=wr_merge_inv H5 wr.
       have[[H1'[m1 st]]|[l e]]:=ihm _ _ erefl erefl H8 wr1.
-      { have[H'[m0' st']]:=ptr_step_merge st H5.
+      { have[H'[m0' st']]:=heap_step_merge st H5.
         exists H'. exists (LetIn Box m0' n0)... }
       { subst.
         have vm':=wr_resolve_ptr wr1 H8.
-        have vm:=era_dyn_val erm vm'.
-        have[m1[m2 e]]:=dyn_sig1_canonical (era_dyn_type erm) (convR _ _) vm. subst.
-        have[m1'[m2' e]]:=era_pair1_canonical erm. subst. inv H8. inv H7.
-        { have[H6[fr' mrg']]:=free_merge H4 H5.
-          have[lm[ln[e1 e2]]]:=free_pair1_canonical wr fr'. subst.
+        have vm:=erasure_program_val erm vm'.
+        have[m1[m2 e]]:=program_sig1_canonical (erasure_program_reflect erm) (convR _ _) vm. subst.
+        have[m1'[m2' e]]:=erasure_pair1_canonical erm. subst. inv H8. inv H7.
+        { have[H6[fr' mrg']]:=lookup_merge H4 H5.
+          have[lm[ln[e1 e2]]]:=lookup_pair1_canonical wr fr'. subst.
           exists H6. exists (n0.[Ptr ln,Ptr lm/])... }
-        { exfalso. apply: free_wr_ptr... } } }
+        { exfalso. apply: lookup_wr_ptr... } } }
     { right. exists l... } }
   { move=>Γ Δ A B m m' n n' t _ erm ihm ern ihn H z e1 e2 rs wr; subst. inv rs.
     { left. exists (APair m0 n0 t :{t} H). exists (Ptr (size H))... }
@@ -235,22 +240,22 @@ Proof with eauto using ptr_step.
       { exists H'. exists (Fst m1)... }
       { subst.
         have vm':=wr_resolve_ptr wr H4.
-        have vm:=era_dyn_val erm vm'.
-        have[m1[m2 e]]:=dyn_with_canonical (era_dyn_type erm) (convR _ _) vm. subst.
-        have[m1'[m2' e]]:=era_apair_canonical erm. subst. inv H4. inv H5.
+        have vm:=erasure_program_val erm vm'.
+        have[m1[m2 e]]:=program_with_canonical (erasure_program_reflect erm) (convR _ _) vm. subst.
+        have[m1'[m2' e]]:=erasure_apair_canonical erm. subst. inv H4. inv H5.
         { exists H'. exists m0... }
-        { exfalso. apply: free_wr_ptr... } } }
+        { exfalso. apply: lookup_wr_ptr... } } }
     { right. exists l... } }
   { move=>Γ Δ A B m m' t erm ihm H z e1 e2 rs wr; subst. inv rs.
     { left. have[[H'[m1 st]]|[l e]]:=ihm _ _ erefl erefl H4 wr.
       { exists H'. exists (Snd m1)... }
       { subst.
         have vm':=wr_resolve_ptr wr H4.
-        have vm:=era_dyn_val erm vm'.
-        have[m1[m2 e]]:=dyn_with_canonical (era_dyn_type erm) (convR _ _) vm. subst.
-        have[m1'[m2' e]]:=era_apair_canonical erm. subst. inv H4. inv H5.
+        have vm:=erasure_program_val erm vm'.
+        have[m1[m2 e]]:=program_with_canonical (erasure_program_reflect erm) (convR _ _) vm. subst.
+        have[m1'[m2' e]]:=erasure_apair_canonical erm. subst. inv H4. inv H5.
         { exists H'. exists n... }
-        { exfalso. apply: free_wr_ptr... } } }
+        { exfalso. apply: lookup_wr_ptr... } } }
     { right. exists l... } }
   { move=>Γ Δ A B x x' P m n s tyB erx ihx tyP H z e1 e2 rs wr; subst. inv rs.
     { left. exists H. exists m0... }

@@ -1,13 +1,17 @@
+(* This file presents the program substitution lemmas instrumented
+   to cover pointer resolution. *)
+
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq.
 From Coq Require Import ssrfun Classical Utf8.
-Require Export AutosubstSsr ARS ptr_step era_inv ptr_res.
+Require Export AutosubstSsr ARS heap_step erasure_inv heap_res.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
+(* Relation to strengthen induction for simultaneous substitution. *)
 Inductive agree_resolve :
-  dyn_ctx -> dyn_ctx -> (var -> term) -> (var -> term) -> nat -> Prop :=
+  program_ctx -> heap -> (var -> term) -> (var -> term) -> nat -> Prop :=
 | agree_resolve_nil H :
   H ▷ U ->
   wr_heap H ->
@@ -145,8 +149,8 @@ Proof with eauto using resolve, id_ren_up.
         by autosubst.
     have[wr1 wr2]:=wr_merge_inv mrg wr. econstructor... }
   { move=>H H' l m m' fr rsm ihm i ξ wr idr. asimpl.
-    have nfm:=free_wr_nf fr wr.
-    have wr':=free_wr fr wr.
+    have nfm:=lookup_wr_nf fr wr.
+    have wr':=lookup_wr fr wr.
     have nfm':=resolve_wr_nfi' rsm wr' nfm.
     have le: 0 <= i by eauto.
     have nfi:=nf_weaken nfm' le.
@@ -155,7 +159,7 @@ Proof with eauto using resolve, id_ren_up.
 Qed.
 
 Lemma agree_resolve_id Δ H σ σ' x i s A :
-  agree_resolve Δ H σ σ' i -> dyn_has Δ x s A -> H ; σ x ~ σ' x.
+  agree_resolve Δ H σ σ' i -> program_has Δ x s A -> H ; σ x ~ σ' x.
 Proof with eauto using resolve, id_ren1.
   move=>agr. elim: agr x s A=>{Δ H σ σ' i}...
   { move=>Δ H σ σ' A x s agr ih x0 s0 A0 hs. inv hs; asimpl.
@@ -214,6 +218,7 @@ Proof with eauto using merge, agree_resolve.
     exists H4. exists H5. repeat split... }
 Qed.
 
+(* Simultaneous substitution lemma. *)
 Lemma resolve_subst Γ Δ H1 H2 H m n n' A σ σ' x :
   Γ ; Δ ⊢ m ~ n : A -> H1 ∘ H2 => H ->
   H1 ; n' ~ n -> wr_heap H1 ->
@@ -227,19 +232,19 @@ Proof with eauto using
     { have->:=merge_pureL mrg H6.
       apply: agree_resolve_id... }
     { inv H4.
-      have//:=free_wr_var H3 wr.
-      have//:=free_wr_ptr H3 wr. } }
+      have//:=lookup_wr_var H3 wr.
+      have//:=lookup_wr_ptr H3 wr. } }
   { move=>Γ Δ A B m m' s k erm ihm H1 H2 H n' σ σ' x mrg rsn wr agr.
-    have wf:=dyn_type_wf (era_dyn_type erm). inv wf.
+    have wf:=program_type_wf (erasure_program_reflect erm). inv wf.
     inv rsn; asimpl.
     { econstructor.
       { destruct s... have k2:=agree_resolve_key agr k... }
       { apply: ihm... } }
     { inv H4.
-      { have nfL:=free_wr_nf H3 wr. inv nfL.
+      { have nfL:=lookup_wr_nf H3 wr. inv nfL.
         have k2:=agree_resolve_key agr k.
-        have[H4[fr mrg']]:=free_merge H3 mrg.
-        have wr':=free_wr H3 wr.
+        have[H4[fr mrg']]:=lookup_merge H3 mrg.
+        have wr':=lookup_wr H3 wr.
         econstructor...
         econstructor...
         have le:0 < x.+1 by eauto.
@@ -248,18 +253,18 @@ Proof with eauto using
           have->:=nf_agree_resolve H7 le agr'... }
         { have agr': agree_resolve (A :L Δ) H2 (up σ) (up σ') x.+1...
           have->:=nf_agree_resolve H7 le agr'... } }
-      { exfalso. apply: free_wr_ptr... } } }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' s t k erm ihm H1 H2 H n' σ σ' x mrg rsn wr agr.
-    have wf:=dyn_type_wf (era_dyn_type erm). inv wf.
+    have wf:=program_type_wf (erasure_program_reflect erm). inv wf.
     inv rsn; asimpl.
     { econstructor.
       { destruct s... have k2:=agree_resolve_key agr k... }
       { apply: ihm... } }
     { inv H4.
-      { have nfL:=free_wr_nf H3 wr. inv nfL.
+      { have nfL:=lookup_wr_nf H3 wr. inv nfL.
         have k2:=agree_resolve_key agr k.
-        have[H4[fr mrg']]:=free_merge H3 mrg.
-        have wr':=free_wr H3 wr.
+        have[H4[fr mrg']]:=lookup_merge H3 mrg.
+        have wr':=lookup_wr H3 wr.
         econstructor...
         econstructor...
         have le:0 < x.+1 by eauto.
@@ -268,40 +273,40 @@ Proof with eauto using
           have->:=nf_agree_resolve H6 le agr'... }
         { have agr': agree_resolve (A :L Δ) H2 (up σ) (up σ') x.+1...
           have->:=nf_agree_resolve H6 le agr'... } }
-      { exfalso. apply: free_wr_ptr... } } }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' n s erm ihm tyn H1 H2 H n' σ σ' x mrg rsn wr agr.
     inv rsn; asimpl.
     { econstructor... }
     { have[wr1 wr2]:=wr_merge_inv H7 wr.
       have//:=resolve_wr_box wr2 H11. }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ1 Δ2 Δ A B m m' n n' s mrg1 erm ihm ern ihn H1 H2 H n0 σ σ' x mrg2 rsn wr agr.
     inv rsn; asimpl.
-    { exfalso. apply: era_box_form... }
+    { exfalso. apply: erasure_box_form... }
     { have[wr1 wr2]:=wr_merge_inv H7 wr.
       have[H4[H5[mrg3[agr1 agr2]]]]:=agree_resolve_merge_inv agr mrg1.
       have[H6[H8[mrg4[mrg5 mrg6]]]]:=merge_distr mrg2 H7 mrg3.
       econstructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' n t tyS erm ihm tyn H1 H2 H n' σ σ' x mrg rsn wr agr.
     inv rsn; asimpl.
     { econstructor... }
     { inv H4.
-      { have nfP:=free_wr_nf H3 wr. inv nfP.
-        have[H4[fr mrg']]:=free_merge H3 mrg.
+      { have nfP:=lookup_wr_nf H3 wr. inv nfP.
+        have[H4[fr mrg']]:=lookup_merge H3 mrg.
         have lx: 0 <= x by eauto.
         econstructor...
         econstructor.
         have->:=nf_agree_resolve H5 lx agr.
         apply: ihm...
-        apply:free_wr... }
-      { exfalso. apply: free_wr_ptr... } } }
+        apply:lookup_wr... }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ1 Δ2 Δ A B m m' n n' t mrg1 tyS erm ihm ern ihn H1 H2 H n0 σ σ' x mrg2 rsn wr agr.
     inv rsn; asimpl.
     { have[wr1 wr2]:=wr_merge_inv H10 wr.
@@ -309,18 +314,18 @@ Proof with eauto using
       have[H6[H7[mrg4[mrg5 mrg6]]]]:=merge_distr mrg2 H10 mrg3.
       econstructor... }
     { inv H4.
-      { have nfP:=free_wr_nf H3 wr. inv nfP.
-        have[H4[fr mrg']]:=free_merge H3 mrg2.
+      { have nfP:=lookup_wr_nf H3 wr. inv nfP.
+        have[H4[fr mrg']]:=lookup_merge H3 mrg2.
         have[H6[H7[mrg3[agr1 agr2]]]]:=agree_resolve_merge_inv agr mrg1.
         have[H9[H11[mrg4[mrg5 mrg6]]]]:=merge_distr mrg' H12 mrg3.
-        have wr':=free_wr H3 wr.
+        have wr':=lookup_wr H3 wr.
         have[wr1 wr2]:=wr_merge_inv H12 wr'.
         have lx: 0 <= x by eauto.
         econstructor...
         econstructor...
         have->:=nf_agree_resolve H8 lx agr1...
         have->:=nf_agree_resolve H10 lx agr2... }
-      { exfalso. apply: free_wr_ptr... } } }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ1 Δ2 Δ A B C m m' n n' s r t mrg1 tyC erm ihm ern ihn H1 H2 H n0 σ σ' x mrg2 rsn wr agr.
     inv rsn; asimpl.
     { have[wr1 wr2]:=wr_merge_inv H7 wr.
@@ -328,8 +333,8 @@ Proof with eauto using
       have[H6[H8[mrg4[mrg5 mrg6]]]]:=merge_distr mrg2 H7 mrg3.
       econstructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ1 Δ2 Δ A B C m m' n n' s r1 r2 t mrg1 tyC erm ihm ern ihn H1 H2 H n0 σ σ' x mrg2 rsn wr agr.
     inv rsn; asimpl.
     { have[wr1 wr2]:=wr_merge_inv H7 wr.
@@ -337,39 +342,39 @@ Proof with eauto using
       have[H6[H8[mrg4[mrg5 mrg6]]]]:=merge_distr mrg2 H7 mrg3.
       econstructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' n n' t k erm ihm ern ihn H1 H2 H n0 σ σ' x mrg rsn wr agr.
     inv rsn; asimpl.
     { have k':=agree_resolve_key agr k.
       econstructor... }
     { inv H4.
-      { have nfP:=free_wr_nf H3 wr. inv nfP.
-        have[H4[fr mrg']]:=free_merge H3 mrg.
+      { have nfP:=lookup_wr_nf H3 wr. inv nfP.
+        have[H4[fr mrg']]:=lookup_merge H3 mrg.
         have k2:=agree_resolve_key agr k.
-        have wr':=free_wr H3 wr.
+        have wr':=lookup_wr H3 wr.
         have lx: 0 <= x by eauto.
         econstructor...
         have->:=nf_agree_resolve H6 lx agr.
         have->:=nf_agree_resolve H8 lx agr.
         econstructor... }
-      { exfalso. apply: free_wr_ptr... } } }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' t erm ihm H1 H2 H n' σ σ' x mrg rsn wr agr.
     inv rsn; asimpl.
     { econstructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B m m' t erm ihm H1 H2 H n' σ σ' x mrg rsn wr agr.
     inv rsn; asimpl.
     { econstructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
   { move=>Γ Δ A B x x' P m n s tyB erx ihx tyP H1 H2 H n' σ σ' x0 mrg rsn wr agr.
     inv rsn; asimpl.
     { constructor... }
     { inv H4.
-      { have vl:=wr_free_dyn_val H3 wr. inv vl. }
-      { exfalso. apply: free_wr_ptr... } } }
+      { have vl:=wr_lookup_program_val H3 wr. inv vl. }
+      { exfalso. apply: lookup_wr_ptr... } } }
 Qed.
