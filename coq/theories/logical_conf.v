@@ -630,7 +630,7 @@ Qed.
 Lemma pstep_diamond m m1 m2 :
   pstep m m1 -> pstep m m2 -> exists2 m', pstep m1 m' & pstep m2 m'.
 Proof with eauto 6 using
-  pstep, pstep_refl,
+  pstep, pstep_reflexive,
   pstep_compat, pstep_compat_beta,
   psstep_compat, psstep_reflexive.
   move=>ps. elim: ps m2=>{m m1}...
