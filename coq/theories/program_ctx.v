@@ -11,7 +11,7 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
 (* A program context is encoded as a list of optional entries. The
-   ability to have empy positions in the program context is necessary
+   ability to have empty positions in the program context is necessary
    for facilitating the DeBrujin indices representation of variables.
    If position i in the entry list is empty, then variable i does not
    exist in that program context. *)
