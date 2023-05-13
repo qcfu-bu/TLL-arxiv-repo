@@ -85,7 +85,7 @@ Proof with eauto using program_type. elim... Qed.
 #[global] Hint Resolve erasure_program_reflect.
 
 (* Theorem 10 (Erasure Existence) *)
-Lemma program_erasure_type Γ Δ m A :
+Lemma program_erasure_exist Γ Δ m A :
   Γ ; Δ ⊢ m : A -> exists m', Γ ; Δ ⊢ m ~ m' : A.
 Proof with eauto using erasure_type.
   elim=>{Γ Δ m A}.
