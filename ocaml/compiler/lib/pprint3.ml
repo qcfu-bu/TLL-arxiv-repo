@@ -108,6 +108,7 @@ and pp_tm fmt = function
   | Send (m, n) -> pf fmt "send(%a, %a)" pp_tm m pp_tm n
   | Close m -> pf fmt "close(%a)" pp_tm m
   | Sleep m -> pf fmt "sleep(%a)" pp_tm m
+  | Rand (m, n) -> pf fmt "rand(%a, %a)" pp_tm m pp_tm n
   | NULL -> pf fmt "NULL"
 
 and pp_cl fmt = function

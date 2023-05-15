@@ -250,7 +250,9 @@ and pp_tm fmt = function
   | Recv m -> pf fmt "recv %a" pp_tm m
   | Send m -> pf fmt "send %a" pp_tm m
   | Close m -> pf fmt "close %a" pp_tm m
+  (* effects *)
   | Sleep m -> pf fmt "sleep %a" pp_tm m
+  | Rand (m, n) -> pf fmt "rand %a %a" pp_tm m pp_tm n
 
 and pp_cl fmt = function
   | PIt m -> pf fmt "| @[() ⇒@;<1 0>%a@]" pp_tm m

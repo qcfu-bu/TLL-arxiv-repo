@@ -436,9 +436,15 @@ module Logical = struct
       match whnf env ty_m with
       | Ch (_, End) -> IO Unit
       | _ -> failwith "Logical.infer_Close")
+    (* effects *)
     | Sleep m ->
       let _ = check_tm res ctx env m Nat in
       IO Unit
+    | Rand (m, n) ->
+      let _ = check_tm res ctx env m Nat in
+      let _ = check_tm res ctx env n Nat in
+      let n = mkApps (Const (Prelude1.addn_i, [])) [ m; n ] in
+      IO (Data (Prelude1.between_d, [], [ m; n ]))
 
   and infer_unit res ctx env mot cls =
     match cls with
@@ -849,9 +855,18 @@ module Program = struct
         let ty = IO Unit in
         Syntax2.(ty, _Close (trans_role rol) m_elab, usg)
       | _ -> failwith "Program.infer_Close")
+    (* effects *)
     | Sleep m ->
       let m_elab, usg = check_tm res ctx env m Nat in
       Syntax2.(IO Unit, _Sleep m_elab, usg)
+    | Rand (m, n) ->
+      let m_elab, usg1 = check_tm res ctx env m Nat in
+      let n_elab, usg2 = check_tm res ctx env n Nat in
+      let n = mkApps (Const (Prelude1.addn_i, [])) [ m; n ] in
+      Syntax2.
+        ( IO (Data (Prelude1.between_d, [], [ m; n ]))
+        , _Rand m_elab n_elab
+        , Usage.merge usg1 usg2 )
 
   and infer_unit res ctx env mot cls =
     match cls with

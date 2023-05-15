@@ -18,33 +18,6 @@ program idM (n : nat) (acc : nat) : IO nat =
     idM n0 (S acc)
   end
 
-program digits : list‹_,U› _ =
-  "0" :: "1" :: "2" :: "3" :: "4" :: "5" :: "6" :: "7" :: "8" :: "9" :: nil
-
-program get_at {A : U} (n : nat) (xs : list‹_,U› A) (a : A) : A =
-  match n with
-  | O ⇒
-    match xs with
-    | nil ⇒ a
-    | x :: _ ⇒ x
-    end
-  | S n ⇒ 
-    match xs with
-    | nil ⇒ a
-    | _ :: xs ⇒ get_at _ n xs a
-    end
-  end
-
-program string_of_digit (n : nat) : string =
-  get_at _ n digits "" 
-
-program string_of_nat (n : nat) : string =
-  let s = string_of_digit (n % 10) in
-  let n = n / 10 in
-  if 0 < n then
-    string_of_nat n ^ s
-  else s
-
 program main : IO unit =
   let x ⇐ idM 8000000 0 in
   return ()

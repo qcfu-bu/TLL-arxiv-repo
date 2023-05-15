@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "prelude.h"
@@ -17,6 +18,7 @@
 pthread_attr_t attr;
 
 void instr_init() {
+  srand(time(0));
   pthread_attr_init(&attr);
   pthread_attr_setstacksize(&attr, 0xf000000);
 }
@@ -307,6 +309,15 @@ void instr_close(tll_ptr *x, tll_ptr ch) {
 void instr_sleep(tll_ptr *x, tll_ptr v) {
   sleep((unsigned long)v);
   *x = 0;
+}
+
+/*-------------------------------------------------------*/
+
+void instr_rand(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
+  unsigned long lower = (unsigned long)v1;
+  unsigned long offset = (unsigned long)v2;
+  unsigned long num = (rand() % (offset + 1)) + lower;
+  instr_struct(x, Between_c, 3, num, 0, 0);
 }
 
 /*-------------------------------------------------------*/

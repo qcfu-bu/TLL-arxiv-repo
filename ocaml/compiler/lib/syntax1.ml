@@ -69,7 +69,9 @@ type tm =
   | Recv of tm
   | Send of tm
   | Close of tm
+  (* effects *)
   | Sleep of tm
+  | Rand of tm * tm
 
 and tms = tm list
 
@@ -203,7 +205,10 @@ let _Fork = box_apply2 (fun a bnd -> Fork (a, bnd))
 let _Recv = box_apply (fun m -> Recv m)
 let _Send = box_apply (fun m -> Send m)
 let _Close = box_apply (fun m -> Close m)
+
+(* effects *)
 let _Sleep = box_apply (fun m -> Sleep m)
+let _Rand = box_apply2 (fun m n -> Rand (m, n))
 
 (* cl *)
 let _PIt = box_apply (fun m -> PIt m)
@@ -312,7 +317,9 @@ let rec lift_tm = function
   | Recv m -> _Recv (lift_tm m)
   | Send m -> _Send (lift_tm m)
   | Close m -> _Close (lift_tm m)
+  (* effects *)
   | Sleep m -> _Sleep (lift_tm m)
+  | Rand (m, n) -> _Rand (lift_tm m) (lift_tm n)
 
 let rec lift_param lift = function
   | PBase a -> _PBase (lift a)

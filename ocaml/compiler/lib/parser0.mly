@@ -140,6 +140,7 @@
 %token TM_SEND     // send
 %token TM_CLOSE    // close
 %token TM_SLEEP    // sleep
+%token TM_RAND     // rand
 
 // dcl
 %token DCL_PROGRAM   // program
@@ -421,6 +422,9 @@ let tm_close :=
 let tm_sleep :=
   | TM_SLEEP; m = tm0; { Sleep m }
 
+let tm_rand :=
+  | TM_RAND; m = tm0; n = tm0; { Rand (m, n) }
+
 let tm0 :=
   | ~ = tm_inst; <>
   | ~ = tm_id; <>
@@ -444,6 +448,7 @@ let tm0 :=
   | ~ = tm_recv; <>
   | ~ = tm_close; <>
   | ~ = tm_sleep; <>
+  | ~ = tm_rand; <>
   | LPAREN; ~ = tm; RPAREN; <>
 
 let tm1 :=

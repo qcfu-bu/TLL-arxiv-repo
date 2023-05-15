@@ -238,6 +238,12 @@ let rec trans_tm = function
     let* m = trans_tm m in
     let bnd = Syntax3.(bind_var arg (_Sleep m)) in
     return Syntax3.(_Lam L bnd)
+  | Rand (m, n) ->
+    let arg = Syntax3.(V.mk "_") in
+    let* m = trans_tm m in
+    let* n = trans_tm n in
+    let bnd = Syntax3.(bind_var arg (_Rand m n)) in
+    return Syntax3.(_Lam L bnd)
   (* erasure *)
   | NULL -> return Syntax3._NULL
 

@@ -97,6 +97,7 @@ let rec trans_tm m0 =
   | Send (m, n) -> _Send (trans_tm m) (trans_tm n)
   | Close m -> _Close (trans_tm m)
   | Sleep m -> _Sleep (trans_tm m)
+  | Rand (m, n) -> _Rand (trans_tm m) (trans_tm n)
   | _ -> lift_tm m0
 
 and trans_int = function

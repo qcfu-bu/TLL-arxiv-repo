@@ -11,7 +11,7 @@ let pp_prelude fmt res =
   in
   pf fmt "#ifndef prelude_h@.#define prelude_h@.@.@[<v 0>%a@]@.@.#endif"
     (list ~sep:sp pp_define)
-    Prelude1.[ char_c; emptyString_c; string_c ]
+    Prelude1.[ char_c; emptyString_c; string_c; between_c ]
 
 let rec pp_value fmt = function
   | Int i -> pf fmt "(tll_ptr)%d" i
@@ -60,6 +60,7 @@ let rec gather_var ctx instrs =
   | Send instr :: instrs -> gather_var (SSet.add instr.lhs ctx) instrs
   | Close instr :: instrs -> gather_var (SSet.add instr.lhs ctx) instrs
   | Sleep instr :: instrs -> gather_var (SSet.add instr.lhs ctx) instrs
+  | Rand instr :: instrs -> gather_var (SSet.add instr.lhs ctx) instrs
   | FreeClo _ :: instrs -> gather_var ctx instrs
   | FreeStruct _ :: instrs -> gather_var ctx instrs
   | FreeThread :: instrs -> gather_var ctx instrs
@@ -181,6 +182,8 @@ and pp_instr fmt = function
   | Recv { lhs; ch } -> pf fmt "instr_recv(&%s, %a);" lhs pp_value ch
   | Close { lhs; ch } -> pf fmt "instr_close(&%s, %a);" lhs pp_value ch
   | Sleep { lhs; rhs } -> pf fmt "instr_sleep(&%s, %a);" lhs pp_value rhs
+  | Rand { lhs; v1; v2 } ->
+    pf fmt "instr_rand(&%s, %a, %a);" lhs pp_value v1 pp_value v2
   | FreeClo v -> pf fmt "instr_free_clo(%a);" pp_value v
   | FreeStruct v -> pf fmt "instr_free_struct(%a);" pp_value v
   | FreeThread -> pf fmt "instr_free_thread(env);"

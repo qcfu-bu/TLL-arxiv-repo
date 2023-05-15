@@ -34,6 +34,7 @@ type tm =
   | Send of tm * tm
   | Close of tm
   | Sleep of tm
+  | Rand of tm * tm
   (* erasure *)
   | NULL
 
@@ -95,6 +96,7 @@ let _Recv = box_apply (fun m -> Recv m)
 let _Send = box_apply2 (fun m n -> Send (m, n))
 let _Close = box_apply (fun m -> Close m)
 let _Sleep = box_apply (fun m -> Sleep m)
+let _Rand = box_apply2 (fun m n -> Rand (m, n))
 
 (* erasure *)
 let _NULL = box NULL
@@ -143,6 +145,7 @@ let rec lift_tm = function
   | Send (m, n) -> _Send (lift_tm m) (lift_tm n)
   | Close m -> _Close (lift_tm m)
   | Sleep m -> _Sleep (lift_tm m)
+  | Rand (m, n) -> _Rand (lift_tm m) (lift_tm n)
   (* erasure *)
   | NULL -> _NULL
 

@@ -1,4 +1,10 @@
 -- ———————————————————————————————————————————————
+-- order
+-- ———————————————————————————————————————————————
+inductive order : U = LT | GT | EQ
+
+
+-- ———————————————————————————————————————————————
 -- boolean
 -- ———————————————————————————————————————————————
 program andb (b1 : bool) (b2 : bool) : bool =
@@ -17,6 +23,20 @@ program notb (b : bool) : bool =
   match b with
   | true ⇒ false
   | false ⇒ true
+  end
+
+program compareb (b1 b2 : bool) : order =
+  match b1 with
+  | true ⇒
+    match b2 with
+    | true ⇒ EQ
+    | false ⇒ GT
+    end
+  | false ⇒
+    match b2 with
+    | true ⇒ LT
+    | false ⇒ EQ
+    end
   end
 
 
@@ -85,6 +105,20 @@ program eqn (x : nat) (y : nat) : bool =
     end
   end
 
+program comparen (n1 n2 : nat) : order =
+  match n1 with
+  | O ⇒
+    match n2 with
+    | O ⇒ EQ
+    | S _ ⇒ LT
+    end
+  | S n1 ⇒
+    match n2 with
+    | O ⇒ GT
+    | S n2 ⇒ comparen n1 n2
+    end
+  end
+
 program pred (x : nat) : nat =
   match x with
   | O ⇒ O
@@ -118,11 +152,34 @@ program modn (x : nat) (y : nat) : nat =
 
 
 -- ———————————————————————————————————————————————
--- strings
+-- between
+-- ———————————————————————————————————————————————
+inductive between (lower upper : nat) : L =
+| Between of (n : nat) {pf1 : lower <= n ≡ true} {pf2 : n <= upper ≡ true}
+
+
+-- ———————————————————————————————————————————————
+-- chars
 -- ———————————————————————————————————————————————
 inductive char : U =
 | Char of (n : nat) 
 
+program eqc (c1 c2 : char) : bool =
+  match c1 with Char n1 ⇒
+  match c2 with Char n2 ⇒
+    n1 == n2
+  end end
+
+program comparec (c1 c2 : char) : order =
+  match c1 with Char n1 ⇒
+  match c2 with Char n2 ⇒
+    comparen n1 n2
+  end end
+
+
+-- ———————————————————————————————————————————————
+-- strings
+-- ———————————————————————————————————————————————
 inductive string : U =
 | EmptyString
 | String of (c : char) (s : string)
@@ -137,6 +194,55 @@ program strlen (s : string) : nat =
   match s with
   | EmptyString ⇒ 0
   | String _ s ⇒ S (strlen s)
+  end
+
+program eqs (s1 s2 : string) : bool =
+  match s1 with
+  | EmptyString ⇒
+    match s2 with
+    | EmptyString ⇒ true
+    | String _ _ ⇒ false
+    end
+  | String c1 s1 ⇒
+    match s2 with
+    | EmptyString ⇒ false
+    | String c2 s2 ⇒ eqc c1 c2 && eqs s1 s2
+    end
+  end
+
+program compares (s1 s2 : string) : order =
+  match s1 with
+  | EmptyString ⇒
+    match s2 with
+    | EmptyString ⇒ EQ
+    | String _ _ ⇒ LT
+    end
+  | String c1 s1 ⇒
+    match s2 with
+    | EmptyString ⇒ GT
+    | String c2 s2 ⇒
+      match comparec c1 c2 with
+      | EQ ⇒ compares s1 s2
+      | LT ⇒ LT
+      | GT ⇒ GT
+      end
+    end
+  end
+
+
+-- ———————————————————————————————————————————————
+-- option
+-- ———————————————————————————————————————————————
+inductive option‹s,t› (A : Type‹s›) : Type‹t› =
+| None
+| Some of (x : A)
+
+program and_then‹s,r,t›
+  {A : Type‹s›} {B : Type‹r›} (opt : option‹_,t› A) : (A → option‹_,t› B) ⊸ option‹_,t› B =
+ln f ⇒
+  match opt with
+  | None ⇒ None
+  | Some x ⇒ f x
   end
 
 
@@ -213,3 +319,60 @@ program prerr (s : string) : IO unit =
   let ch ⇐ send ch s in
   let ch ⇐ send ch false in
   close ch
+
+
+-- ———————————————————————————————————————————————
+-- string conversions
+-- ———————————————————————————————————————————————
+program digits : list‹_,U› _ =
+  "0" :: "1" :: "2" :: "3" :: "4" :: "5" :: "6" :: "7" :: "8" :: "9" :: nil
+
+program get_at {A : U} (n : nat) (xs : list‹_,U› A) (a : A) : A =
+  match n with
+  | O ⇒
+    match xs with
+    | nil ⇒ a
+    | x :: _ ⇒ x
+    end
+  | S n ⇒ 
+    match xs with
+    | nil ⇒ a
+    | _ :: xs ⇒ get_at _ n xs a
+    end
+  end
+
+program string_of_digit (n : nat) : string =
+  get_at _ n digits "" 
+
+program string_of_nat (n : nat) : string =
+  let s = string_of_digit (n % 10) in
+  let n = n / 10 in
+  if 0 < n then
+    string_of_nat n ^ s
+  else s
+
+program digit_of_char (c : char) : option‹_,L› nat =
+  if eqc c '0' then Some 0 else
+  if eqc c '1' then Some 1 else
+  if eqc c '2' then Some 2 else
+  if eqc c '3' then Some 3 else
+  if eqc c '4' then Some 4 else
+  if eqc c '5' then Some 5 else
+  if eqc c '6' then Some 6 else
+  if eqc c '7' then Some 7 else
+  if eqc c '8' then Some 8 else
+  if eqc c '9' then Some 9 else
+  None
+
+program nat_of_string_loop (s : string) (acc : nat) : option‹_,L› nat =
+  match s with
+  | EmptyString ⇒ Some acc
+  | String c s ⇒
+    match digit_of_char c with
+    | None ⇒ None
+    | Some n ⇒ nat_of_string_loop s (acc * 10 + n)
+    end
+  end
+
+program nat_of_string (s : string) : option‹_,L› nat =
+  nat_of_string_loop s 0

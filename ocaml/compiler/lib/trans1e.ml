@@ -183,7 +183,7 @@ and infer_tm ctx env m0 : tm trans1e =
     | Pi (_, _, a, bnd) ->
       let* _ = check_tm ctx env n a in
       return (subst bnd n)
-    | _ -> failwith "trans1e.infer_App")
+    | _ -> failwith "trans1e.infer_App(%a)" pp_tm m0)
   | Let (rel, m, bnd) ->
     let x, n = unbind bnd in
     let* a = infer_tm ctx env m in
@@ -332,9 +332,15 @@ and infer_tm ctx env m0 : tm trans1e =
     match whnf env ty_m with
     | Ch (_, End) -> return (IO Unit)
     | ty -> failwith "trans1e.infer_Close(%a)" pp_tm ty)
+  (* effects *)
   | Sleep m ->
     let* _ = check_tm ctx env m Nat in
     return (IO Unit)
+  | Rand (m, n) ->
+    let* _ = check_tm ctx env m Nat in
+    let* _ = check_tm ctx env n Nat in
+    let n = mkApps (Const (Prelude1.addn_i, [])) [ m; n ] in
+    return (IO (Data (Prelude1.between_d, [], [ m; n ])))
 
 and infer_unit ctx env mot cls =
   match cls with

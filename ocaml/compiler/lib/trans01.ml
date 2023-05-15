@@ -368,6 +368,10 @@ let rec trans_tm nspc = function
   | Sleep m ->
     let m, iset = trans_tm nspc m in
     Syntax1.(_Sleep m, iset)
+  | Rand (m, n) ->
+    let m, iset1 = trans_tm nspc m in
+    let n, iset2 = trans_tm nspc n in
+    Syntax1.(_Rand m n, ISet.union iset1 iset2)
 
 and trans_cl nspc = function
   | Binder (PIt, m) ->

@@ -1,0 +1,144 @@
+-- ———————————————————————————————————————————————
+-- Guess the secret number game
+
+-- The server picks a secret value and gives the player a range in which this secret resides.
+-- The player must guess the secret value in a finite number of steps to win, otherwise they lose.
+-- For each wrong guess, the server gives the player feedback on the size of their guess
+-- compared to the actual secret value.
+-- ———————————————————————————————————————————————
+
+-- ans is the secret answer held by the server
+-- guess is the input of the player
+logical game_loop (ans : nat) (repeat : nat) : proto =
+  match repeat with
+  | O ⇒ ⇑(n : nat) → ⇑{n ≡ ans} → •
+  | S repeat ⇒
+    ⇓(guess : nat) →
+    ⇑(ord : order) → ⇑{ord ≡ comparen ans guess} →
+    match ord with
+    | EQ ⇒ •
+    | LT ⇒ game_loop ans repeat 
+    | GT ⇒ game_loop ans repeat 
+    end
+  end
+
+-- the game protocol enforces that the server choose a single answer and
+-- give truthful feedback to the player
+logical game : proto =
+  ⇑(lower : nat) →
+  ⇑(upper : nat) →
+  ⇑{ans : nat} → ⇑{lower <= ans ≡ true} → ⇑{ans <= upper ≡ true} →
+  ⇑(repeat : nat) →
+  game_loop ans repeat
+
+logical loop_ch (ans repeat : nat) : L = ch⟨ game_loop ans repeat ⟩
+logical loop_hc (ans repeat : nat) : L = hc⟨ game_loop ans repeat ⟩
+
+logical game_ch : L = ch⟨ game ⟩
+logical game_hc : L = hc⟨ game ⟩
+
+program read_nat (_ : unit) : IO nat =
+  let s ⇐ readline () in
+  match nat_of_string s with
+  | Some n ⇒ return n
+  | None ⇒ print "please input a natural number\n"; read_nat ()
+  end
+
+program player_loop {ans : nat} (repeat : nat) (c : loop_hc ans repeat) : IO unit =
+  match repeat as repeat0 in loop_hc ans repeat0 → IO unit with 
+  | O ⇒ fn c ⇒
+    let ⟨ans, c⟩ ⇐ recv c in
+    let ⟨{pf}, c⟩ ⇐ recv c in
+    print ("You Lose! The answer is " ^ string_of_nat ans ^ ".\n");
+    close c
+  | S repeat ⇒ fn c ⇒
+    let guess ⇐ read_nat () in
+    let c ⇐ send c guess in 
+    let ⟨ord, c⟩ ⇐ recv c in
+    let ⟨{pf}, c⟩ ⇐ recv c in
+    match ord as ord0 in
+      hc⟨match ord0 with
+         | EQ ⇒ •
+         | LT ⇒ game_loop ans repeat
+         | GT ⇒ game_loop ans repeat
+         end⟩ → IO unit
+    with
+    | EQ ⇒ fn c ⇒
+      print "You Win!\n"; close c
+    | LT ⇒ fn c ⇒
+      print ("The answer is lesser, you have " ^ string_of_nat repeat ^ " more tries.\n");
+      player_loop ans repeat c 
+    | GT ⇒ fn c ⇒
+      print ("The answer is greater, you have " ^ string_of_nat repeat ^ " more tries.\n");
+      player_loop ans repeat c 
+    end c
+  end c
+
+program player (c : game_hc) : IO unit =
+  let ⟨lower, c⟩ ⇐ recv c in 
+  let ⟨upper, c⟩ ⇐ recv c in
+  let ⟨{ans}, c⟩ ⇐ recv c in
+  let ⟨{pf1}, c⟩ ⇐ recv c in
+  let ⟨{pf2}, c⟩ ⇐ recv c in
+  let ⟨repeat, c⟩ ⇐ recv c in
+  print
+    ("Please make a guess between " ^
+     string_of_nat lower ^ " and " ^
+     string_of_nat upper ^ ".\n");
+  print 
+    ("You have " ^ string_of_nat repeat ^ " tries.\n");
+  player_loop ans repeat c
+
+program server_loop (ans repeat : nat) (c : loop_ch ans repeat) : IO unit =
+  match repeat as repeat0 in loop_ch ans repeat0 → IO unit with
+  | O ⇒ fn c ⇒
+    let c ⇐ send c ans in
+    let c ⇐ send c refl in
+    close c
+  | S repeat ⇒ fn c ⇒
+    let ⟨n, c⟩ ⇐ recv c in
+    let ord = comparen ans n in
+    let c ⇐ send c ord in
+    let c ⇐ send c refl in
+    match ord as ord0 in
+      ch⟨match ord0 with
+         | EQ ⇒ •
+         | LT ⇒ game_loop ans repeat
+         | GT ⇒ game_loop ans repeat
+         end⟩ → IO unit
+    with
+    | EQ ⇒ fn c ⇒ close c
+    | LT ⇒ fn c ⇒ server_loop ans repeat c
+    | GT ⇒ fn c ⇒ server_loop ans repeat c
+    end c
+  end c
+
+program server (c : game_ch) : IO unit =
+  let lower = 0 in
+  let offset = 128 in
+  let res ⇐ rand lower offset in
+  match res with Between ans pf1 pf2 ⇒
+  let repeat = 6 in
+  let c ⇐ send c lower in
+  let c ⇐ send c (lower + offset) in
+  let c ⇐ send c ans in
+  let c ⇐ send c pf1 in
+  let c ⇐ send c pf2 in
+  let c ⇐ send c repeat in
+  server_loop ans repeat c
+  end
+
+program main : IO unit =
+  let c ⇐
+    fork (c : game_ch) in server c
+  in
+  let c0 ⇐
+    fork (c0 : ch⟨⇓(game_hc) → ⇑(unit) → •⟩) in
+      let ⟨c, c0⟩ ⇐ recv c0 in
+      let _ ⇐ player c in
+      let c0 ⇐ send c0 () in
+      close c0
+  in
+  let c0 ⇐ send c0 c in
+  let ⟨_, c0⟩ ⇐ recv c0 in
+  close c0

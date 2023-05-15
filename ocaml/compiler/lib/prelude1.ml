@@ -47,6 +47,10 @@ let gten_i = prelude_i "gten"
 let ltn_i = prelude_i "ltn"
 let gtn_i = prelude_i "gtn"
 
+(* between *)
+let between_d = prelude_d "between"
+let between_c = prelude_c "Between"
+
 (* string *)
 let char_d = prelude_d "char"
 let char_c = prelude_c "Char"

@@ -213,6 +213,10 @@ let rec fv ctx = function
   | Send m -> fv ctx m
   | Close m -> fv ctx m
   | Sleep m -> fv ctx m
+  | Rand (m, n) ->
+    let fsv1, fv1 = fv ctx m in
+    let fsv2, fv2 = fv ctx n in
+    (SVSet.union fsv1 fsv2, VSet.union fv1 fv2)
 
 (* meta variable occurences *)
 let rec occurs_sort x = function
@@ -286,6 +290,7 @@ let rec occurs_tm x = function
   | Send m -> occurs_tm x m
   | Close m -> occurs_tm x m
   | Sleep m -> occurs_tm x m
+  | Rand (m, n) -> occurs_tm x m || occurs_tm x n
   (* other *)
   | _ -> false
 
@@ -475,6 +480,10 @@ let rec simpl ?(expand_const = false) eqn =
     | Send m1, Send m2 -> simpl (Eqn1 (env, m1, m2))
     | Close m1, Close m2 -> simpl (Eqn1 (env, m1, m2))
     | Sleep m1, Sleep m2 -> simpl (Eqn1 (env, m1, m2))
+    | Rand (m1, n1), Rand (m2, n2) ->
+      let eqns1 = simpl (Eqn1 (env, m1, m2)) in
+      let eqns2 = simpl (Eqn1 (env, n1, n2)) in
+      eqns1 @ eqns2
     (* other *)
     | _ -> failwith "simpl(%a, %a)" pp_tm m1 pp_tm m2)
 
@@ -653,6 +662,7 @@ let resolve_tm ((map0, map1) : map0 * map1) m =
     | Send m -> Send (resolve m)
     | Close m -> Close (resolve m)
     | Sleep m -> Sleep (resolve m)
+    | Rand (m, n) -> Rand (resolve m, resolve n)
     (* other *)
     | m -> m
   in

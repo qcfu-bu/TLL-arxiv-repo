@@ -46,6 +46,7 @@ void instr_recv(tll_ptr *x, tll_ptr ch);
 void instr_send(tll_ptr *x, tll_ptr ch, tll_ptr msg);
 void instr_close(tll_ptr *x, tll_ptr ch);
 void instr_sleep(tll_ptr *x, tll_ptr v);
+void instr_rand(tll_ptr *x, tll_ptr v1, tll_ptr v2);
 void instr_free_clo(tll_ptr *x);
 void instr_free_struct(tll_ptr *x);
 void instr_free_thread(tll_env env);

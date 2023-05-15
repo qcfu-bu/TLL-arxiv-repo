@@ -151,6 +151,11 @@ and instr =
       { lhs : string
       ; rhs : value
       }
+  | Rand of
+      { lhs : string
+      ; v1 : value
+      ; v2 : value
+      }
   | FreeClo of value
   | FreeStruct of value
   | FreeThread

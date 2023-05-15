@@ -74,6 +74,7 @@ let fv ctx m =
     | Send (m, n) -> VSet.union (aux ctx m) (aux ctx n)
     | Close m -> aux ctx m
     | Sleep m -> aux ctx m
+    | Rand (m, n) -> VSet.union (aux ctx m) (aux ctx n)
     | NULL -> VSet.empty
   in
   VSet.elements (aux ctx m)
@@ -225,6 +226,13 @@ let rec trans_tm procs (vtbl : vtbl) m =
     let lhs = T.mk "sleep_tmp" in
     let procs, instr, ret = trans_tm procs vtbl m in
     (procs, instr @ [ Sleep { lhs; rhs = ret } ], Reg lhs)
+  | Rand (m, n) ->
+    let lhs = T.mk "rand_tmp" in
+    let procs, m_instr, m_ret = trans_tm procs vtbl m in
+    let procs, n_instr, n_ret = trans_tm procs vtbl n in
+    ( procs
+    , m_instr @ n_instr @ [ Rand { lhs; v1 = m_ret; v2 = n_ret } ]
+    , Reg lhs )
   (* erausre *)
   | NULL -> (procs, [], NULL)
 
