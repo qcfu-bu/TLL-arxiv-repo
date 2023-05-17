@@ -328,11 +328,11 @@ let rec simpl ?(expand_const = false) eqn =
     | Const (x, ss), _ -> (
       match Env.find_const x env with
       | Some entry -> simpl (Eqn1 (env, entry.scheme ss, m2))
-      | None -> [])
+      | None -> failwith "simpl_Eqn1(%a, %a)" pp_tm m1 pp_tm m2)
     | _, Const (y, ss) -> (
       match Env.find_const y env with
       | Some entry -> simpl (Eqn1 (env, m1, entry.scheme ss))
-      | None -> [])
+      | None -> failwith "simpl_Eqn1(%a, %a)" pp_tm m1 pp_tm m2)
     | Pi (rel1, s1, a1, bnd1), Pi (rel2, s2, a2, bnd2) when rel1 = rel2 ->
       let _, b1, b2 = unbind2 bnd1 bnd2 in
       let eqns0 = simpl (Eqn0 (s1, s2)) in
@@ -712,8 +712,5 @@ let rec unify ((map0, map1) as map : map0 * map1) eqns =
         | Eqn1 (env, m1, m2) -> Eqn1 (env, resolve_tm map m1, resolve_tm map m2))
       eqns
   in
-  match List.concat_map simpl eqns with
-  | [] -> map
-  | eqn :: eqns ->
-    let map = solve map eqn in
-    unify map eqns
+  let eqns = List.concat_map simpl eqns in
+  List.fold_left solve map eqns

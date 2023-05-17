@@ -1,4 +1,13 @@
 -- ———————————————————————————————————————————————
+-- absurd
+-- ———————————————————————————————————————————————
+inductive absurd : U =
+
+logical absurd_elim‹s› (A : Type‹s›) (p : ⊥) : A =
+  match p with end
+
+
+-- ———————————————————————————————————————————————
 -- order
 -- ———————————————————————————————————————————————
 inductive order : U = LT | GT | EQ
@@ -53,43 +62,9 @@ program lten (x : nat) (y : nat) : bool =
     end
   end
 
-program gten (x : nat) (y : nat) : bool =
-  match x with
-  | O ⇒
-    match y with
-    | O ⇒ true
-    | S _ ⇒ false
-    end
-  | S x ⇒
-    match y with
-    | O ⇒ true
-    | S y ⇒ x >= y
-    end
-  end
-
-program ltn (x : nat) (y : nat) : bool =
-  match x with
-  | O ⇒
-    match y with
-    | O ⇒ false
-    | S y ⇒ true
-    end
-  | S x ⇒
-    match y with
-    | O ⇒ false
-    | S y ⇒ x < y
-    end
-  end
-
-program gtn (x : nat) (y : nat) : bool =
-  match x with
-  | O ⇒ false
-  | S x ⇒
-    match y with
-    | O ⇒ true
-    | S y ⇒ x > y
-    end
-  end
+program ltn (x : nat) (y : nat) : bool = (S x) <= y
+program gten (x : nat) (y : nat) : bool = y <= x
+program gtn (x : nat) (y : nat) : bool = y < x
 
 program eqn (x : nat) (y : nat) : bool =
   match x with
@@ -252,6 +227,12 @@ ln f ⇒
 inductive list‹s,t› (A : Type‹s›) : Type‹t› =
 | nil
 | cons of (hd : A) (tl : list‹s,t› A)
+
+logical llen‹s,t› (A : Type‹s›) (xs : list‹s,t› A) : nat =
+  match xs with
+  | nil ⇒ O
+  | x :: xs ⇒ S (llen _ xs)
+  end
 
 program len‹s,t› {A : Type‹s›} (xs : list‹_,t› A) : nat ⊗ list‹_,t› A =
   match xs with

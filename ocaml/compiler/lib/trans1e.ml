@@ -98,28 +98,6 @@ let add_meta env x a : unit trans1e =
   | Some b -> ((), mctx, Eqn1 (env, a, b) :: eqns, map0, map1)
   | None -> ((), MMap.add x a mctx, eqns, map0, map1)
 
-(* assert equality between two sorts *)
-let assert_equal0 s1 s2 : unit trans1e =
- fun (mctx, eqns, map0, map1) ->
-  if eq_sort s1 s2 then
-    ((), mctx, eqns, map0, map1)
-  else
-    ((), mctx, Eqn0 (s1, s2) :: eqns, map0, map1)
-
-(* assert equality between two terms *)
-let assert_equal1 env m n : unit trans1e =
- fun (mctx, eqns, map0, map1) ->
-  if eq_tm env m n then
-    ((), mctx, eqns, map0, map1)
-  else
-    ((), mctx, Eqn1 (env, m, n) :: eqns, map0, map1)
-
-(* assert equality between terms and their sorts *)
-let assert_equal env (m, s1) (n, s2) : unit trans1e =
-  let* _ = assert_equal0 s1 s2 in
-  let* _ = assert_equal1 env m n in
-  return ()
-
 let unify : unit trans1e =
  fun (mctx, eqns, map0, map1) ->
   let map0, map1 = unify (map0, map1) eqns in
@@ -140,18 +118,60 @@ let resolve_tm m : tm trans1e =
   let m = resolve_tm (map0, map1) m in
   (m, mctx, eqns, map0, map1)
 
+(* assert equality between two sorts *)
+let assert_equal0 s1 s2 : unit trans1e =
+ fun (mctx, eqns, map0, map1) ->
+  if eq_sort s1 s2 then
+    ((), mctx, eqns, map0, map1)
+  else
+    ((), mctx, Eqn0 (s1, s2) :: eqns, map0, map1)
+
+(* assert equality between two terms *)
+let rec assert_equal1 ctx env m n : unit trans1e =
+ fun (mctx, eqns, map0, map1) ->
+  if eq_tm env m n then
+    ((), mctx, eqns, map0, map1)
+  else
+    let m = Unify1.resolve_tm (map0, map1) m in
+    let n = Unify1.resolve_tm (map0, map1) n in
+    let eqns1 = simpl (Eqn1 (env, m, n)) in
+    let mctx, eqns, map0, map1 =
+      List.fold_left
+        (fun (mctx, eqns, map0, map1) eqn ->
+          match eqn with
+          | Eqn0 _ -> (mctx, eqn :: eqns, map0, map1)
+          | Eqn1 (env, m, n) ->
+            let a, mctx, eqns, map0, map1 =
+              infer_tm ctx env m (mctx, eqns, map0, map1)
+            in
+            let b, mctx, eqns, map0, map =
+              infer_tm ctx env n (mctx, eqns, map0, map1)
+            in
+            (mctx, Eqn1 (env, a, b) :: eqn :: eqns, map0, map1))
+        (mctx, eqns, map0, map1) eqns1
+    in
+    ((), mctx, eqns, map0, map1)
+
+(* assert equality between terms and their sorts *)
+and assert_equal ctx env (m, s1) (n, s2) : unit trans1e =
+  (* let _ = pr "assert_equal(%a ==== %a)@." pp_tm m pp_tm n in *)
+  let* _ = assert_equal0 s1 s2 in
+  let* _ = assert_equal1 ctx env m n in
+  return ()
+
 (* assert the sort of a type *)
-let rec infer_sort ctx env a : sort trans1e =
+and infer_sort ctx env a : sort trans1e =
   let* srt = infer_tm ctx env a in
   let* srt = resolve_tm srt in
   match whnf env srt with
   | Type s -> return s
   | _ ->
     let s, _ = smeta_mk ctx in
-    let* _ = assert_equal1 env srt (Type s) in
+    let* _ = assert_equal1 ctx env srt (Type s) in
     return s
 
 and infer_tm ctx env m0 : tm trans1e =
+  (* let _ = pr "infer_tm(%a)@." pp_tm m0 in *)
   match m0 with
   (* inference *)
   | Ann (m, a) ->
@@ -281,7 +301,7 @@ and infer_tm ctx env m0 : tm trans1e =
       | IO b -> return (IO b)
       | ty_n ->
         let b, _ = meta_mk ctx in
-        let* _ = assert_equal env (ty_n, L) (IO b, L) in
+        let* _ = assert_equal ctx env (ty_n, L) (IO b, L) in
         return (IO b))
     | _ -> failwith "trans1e.infer_MLet(%a, %a)" pp_tm m pp_tm ty_m)
   (* session *)
@@ -479,6 +499,7 @@ and infer_tele ctx env ns tl =
   | _ -> failwith "trans1e.infer_tele(%a)" pp_tele tl
 
 and check_tm ctx env m0 a0 : unit trans1e =
+  (* let _ = pr "check_tm(%a <====== %a)@." pp_tm m0 pp_tm a0 in *)
   let* a0 = unify >> resolve_tm a0 in
   match (m0, whnf env a0) with
   (* inference *)
@@ -486,7 +507,7 @@ and check_tm ctx env m0 a0 : unit trans1e =
   | Ann (m, a1), a0 ->
     let* s0 = infer_sort ctx env a0 in
     let* s1 = infer_sort ctx env a1 in
-    let* _ = assert_equal env (a0, s0) (a1, s1) in
+    let* _ = assert_equal ctx env (a0, s0) (a1, s1) in
     let* a1 = unify >> resolve_tm a1 in
     check_tm ctx env m a1
   (* core *)
@@ -495,7 +516,7 @@ and check_tm ctx env m0 a0 : unit trans1e =
     let* t0 = infer_sort ctx env a0 in
     let* t1 = infer_sort ctx env a1 in
     let* _ = assert_equal0 s0 s1 in
-    let* _ = assert_equal env (a0, t0) (a1, t1) in
+    let* _ = assert_equal ctx env (a0, t0) (a1, t1) in
     check_tm (add_var x a1 ctx) env m b
   | Let (rel, m, bnd), a0 ->
     let x, n = unbind bnd in
@@ -508,12 +529,16 @@ and check_tm ctx env m0 a0 : unit trans1e =
     let* _ = assert_equal0 s0 s1 in
     let* _ = check_tm ctx env m a in
     check_tm ctx env n (subst bnd (Ann (m, a)))
+  | Cons (c, ss0, ms0, ns), (Data (d, ss1, ms1) as a0) ->
+    let sch = find_cons c ctx in
+    let ptl = msubst sch (Array.of_list ss0) in
+    check_ptl ctx env ms0 ns ptl ms1 a0
   | Match (m, mot, cls), a0 -> (
     let* ty_m = infer_tm ctx env m in
     let a1 = subst mot m in
     let* s0 = infer_sort ctx env a0 in
     let* s1 = infer_sort ctx env a1 in
-    let* _ = assert_equal env (a0, s0) (a1, s1) in
+    let* _ = assert_equal ctx env (a0, s0) (a1, s1) in
     let* ty_m = unify >> resolve_tm ty_m in
     match whnf env ty_m with
     | Unit -> infer_unit ctx env mot cls
@@ -527,15 +552,38 @@ and check_tm ctx env m0 a0 : unit trans1e =
       let* a1 = infer_tm ctx env m0 in
       let* s0 = infer_sort ctx env a0 in
       let* s1 = infer_sort ctx env a1 in
-      let* _ = assert_equal env (a0, s0) (a1, s1) in
+      let* _ = assert_equal ctx env (a0, s0) (a1, s1) in
       return ())
   (* other *)
   | m0, a0 ->
     let* a1 = infer_tm ctx env m0 in
     let* s0 = infer_sort ctx env a0 in
     let* s1 = infer_sort ctx env a1 in
-    let* _ = assert_equal env (a0, s0) (a1, s1) in
+    let* _ = assert_equal ctx env (a0, s0) (a1, s1) in
     return ()
+
+and check_ptl ctx env ms0 ns ptl ms1 a =
+  (* let _ = pr "check_ptl(%a)@." pp_ptl ptl in *)
+  match (ms0, ms1, ptl) with
+  | [], [], PBase b -> check_tele ctx env ns b a
+  | m0 :: ms0, m1 :: ms1, PBind (a0, bnd) ->
+    let* _ = check_tm ctx env m0 a0 in
+    let* _ = assert_equal1 ctx env m0 m1 in
+    check_ptl ctx env ms0 ns (subst bnd m0) ms1 a
+  | _ -> failwith "trans1e.check_ptl(%a)" pp_ptl ptl
+
+and check_tele ctx env ns tl a =
+  match (ns, tl) with
+  | [], TBase b ->
+    let* s0 = infer_sort ctx env a in
+    let* s1 = infer_sort ctx env b in
+    let* _ = unify >> resolve_tm b in
+    let* _ = assert_equal ctx env (a, s0) (b, s1) in
+    return ()
+  | n :: ns, TBind (_, a0, bnd) ->
+    let* _ = check_tm ctx env n a0 in
+    check_tele ctx env ns (subst bnd n) a
+  | _ -> failwith "trans1e.check_tele(%a)" pp_tele tl
 
 let rec check_dcls ctx env dcls =
   match dcls with

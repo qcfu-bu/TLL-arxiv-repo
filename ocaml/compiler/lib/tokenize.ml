@@ -50,6 +50,9 @@ let downarrow1 = [%sedlex.regexp? 8659] (* ⇓ *)
 let times = [%sedlex.regexp? 215] (* × *)
 let otimes = [%sedlex.regexp? 8855] (* ⊗ *)
 
+(* absurd *)
+let absurd_type = [%sedlex.regexp? 8869] (* ⊥ *)
+
 (* unit *)
 let unit_type = [%sedlex.regexp? "unit"]
 
@@ -206,6 +209,8 @@ let rec tokenize buf =
   (* products *)
   | times -> TIMES
   | otimes -> OTIMES
+  (* absurd *)
+  | absurd_type -> ABSURD_TYPE
   (* unit *)
   | unit_type -> UNIT_TYPE
   (* bool *)

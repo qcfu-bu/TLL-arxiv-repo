@@ -51,7 +51,7 @@ program server (ch : RSA_ch) : IO unit =
   close ch; print (string_of_nat P1 ^ "\n")
 
 program client (ch : RSA_hc) : IO unit =
-  let P0 = 420 in
+  let P0 = 123 in
   let ⟨{x}, ch⟩ ⇐ recv ch in
   let ⟨{y}, ch⟩ ⇐ recv ch in
   let ⟨n, ch⟩ ⇐ recv ch in

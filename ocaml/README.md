@@ -33,3 +33,4 @@ The emitted C code can be further compiled to a `main.out` executable by running
 - [test16.tll](./compiler/tests/test16.tll): Diffie-Hellman key exchange protocol.
 - [test17.tll](./compiler/tests/test17.tll): RSA public-key encryption.
 - [test18.tll](./compiler/tests/test18.tll): *Guess the Secret Number* game implementation using dependent session types.
+- [test19.tll](./compiler/tests/test19.tll): *Wordle* game implementation using dependent session types.

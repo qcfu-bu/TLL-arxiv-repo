@@ -33,6 +33,9 @@
 %right TIMES
 %right OTIMES
 
+// absurd
+%token ABSURD_TYPE // ⊥
+
 // unit
 %token UNIT_TYPE // unit
 
@@ -172,6 +175,9 @@ let tm_id :=
 let tm_inst :=
   | id = identifier; FLQ; ss = separated_list(COMMA, sort); FRQ;
     { Inst (id, ss) }
+
+let tm_absurd :=
+  | ABSURD_TYPE; { Id "absurd" }
 
 let tm_unit :=
   | UNIT_TYPE; { Unit }
@@ -428,6 +434,7 @@ let tm_rand :=
 let tm0 :=
   | ~ = tm_inst; <>
   | ~ = tm_id; <>
+  | ~ = tm_absurd; <>
   | ~ = tm_unit; <>
   | ~ = tm_bool; <>
   | ~ = tm_nat; <>
