@@ -1,6 +1,6 @@
 ;;; tll-mode.el --- major mode for tll -*- lexical-binding: t; -*-
 (setq tll-types '("let" "in" "rew" "match" "as" "with" "end"
-                  "if" "then" "else" "fork" "return"))
+                  "absurd" "if" "then" "else" "fork" "return"))
 (setq tll-keywords '("of" "size"))
 (setq tll-lambda '("fn" "ln" "fun" "val" "main"))
 (setq tll-session '("open" "send" "recv" "close"))
@@ -18,7 +18,7 @@
 (setq tll-assert-regexp "\\(?:assert_equal\\)")
 
 (setq tll-font-lock-keywords
-      `(("\\(\\<inductive\\>\\|\\<program\\>\\|\\<logical\\>\\|\\<data\\>\\|\\<def\\>\\)\s*\\([[:graph:]]*\\)"
+      `(("\\(\\<inductive\\>\\|\\<program\\>\\|\\<logical\s*inductive\\>\\|\\<logical\\>\\)\s*\\([[:graph:]]*\\)"
          (1 font-lock-keyword-face)
          (2 font-lock-variable-name-face))
         (,tll-pragma-start-regexp . font-lock-keyword-face)
@@ -55,9 +55,7 @@
   (set-syntax-table tll-mode-syntax-table)
   (setq-local comment-start "--")
   (setq-local comment-start-skip "--+[\t ]*")
-  (setq-local comment-end "")
-  (company-mode 1)
-  (add-to-list 'company-backends 'company-math-symbols-unicode))
+  (setq-local comment-end ""))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.tll" . tll-mode))
