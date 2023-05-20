@@ -26,12 +26,12 @@ type prim =
   | Stderr
 
 type p =
-  | PIt
+  | PIt of sort
   | PTrue
   | PFalse
   | PZero
   | PSucc of id
-  | PPair of rel * sort * id * id
+  | PPair of rel * rel * sort * id * id
   | PCons of id * ids
 
 type ('a, 'b) binder = Binder of 'a * 'b
@@ -48,8 +48,8 @@ type tm =
   | App of tms
   | Let of rel * tm * ((id, p) either, tm) binder
   (* native *)
-  | Unit
-  | UIt
+  | Unit of sort
+  | UIt of sort
   | Bool
   | BTrue
   | BFalse
@@ -57,9 +57,12 @@ type tm =
   | NZero
   | NSucc of int * tm
   (* data *)
-  | Sigma of rel * sort * tm * (id, tm) binder
-  | Pair of rel * sort * tm * tm
-  | Match of tm * (id, tm) binder * cls
+  | Sigma of rel * rel * sort * tm * (id, tm) binder
+  | Pair of rel * rel * sort * tm * tm
+  | Match of rel * tm * (id, tm) binder * cls
+  (* absurd *)
+  | Bot
+  | Absurd of tm
   (* equality *)
   | Eq of tm * tm
   | Refl
@@ -87,7 +90,7 @@ and cls = cl list
 
 type dcl =
   | DTm of rel * id * args scheme
-  | DData of id * tm param scheme * dconss
+  | DData of rel * id * tm param scheme * dconss
 
 and dcls = dcl list
 and dcons = DCons of id * tele param scheme

@@ -126,11 +126,11 @@ let rec whnf ?(expand_const = true) (env : Env.t) = function
     | NSucc (j, m) -> NSucc (i + j, m)
     | _ -> NSucc (i, m))
   (* data *)
-  | Match (m, mot, cls) -> (
+  | Match (rel, m, mot, cls) -> (
     let m = whnf ~expand_const env m in
     match match_cls cls m with
     | Some m -> whnf ~expand_const env m
-    | _ -> Match (m, mot, cls))
+    | _ -> Match (rel, m, mot, cls))
   (* equality *)
   | Rew (bnd, pf, m) -> (
     let pf = whnf ~expand_const env pf in
@@ -155,14 +155,14 @@ and match_cls cls m =
         ~some:(fun _ -> acc)
         ~none:
           (match (cl, m) with
-          | PIt rhs, UIt -> Some rhs
+          | PIt (s1, rhs), UIt s2 when eq_sort s1 s2 -> Some rhs
           | PTrue rhs, BTrue -> Some rhs
           | PFalse rhs, BFalse -> Some rhs
           | PZero rhs, NZero -> Some rhs
           | PSucc bnd, NSucc (1, m) -> Some (subst bnd m)
           | PSucc bnd, NSucc (i, m) -> Some (subst bnd (NSucc (i - 1, m)))
-          | PPair (rel1, s1, bnd), Pair (rel2, s2, m1, m2)
-            when rel1 = rel2 && s1 = s2 ->
+          | PPair (rel11, rel12, s1, bnd), Pair (rel21, rel22, s2, m1, m2)
+            when rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2 ->
             Some (msubst bnd [| m1; m2 |])
           | PCons (c1, bnd), Cons (c2, _, _, ms) when C.equal c1 c2 ->
             Some (msubst bnd (Array.of_list ms))
@@ -192,8 +192,8 @@ let rec aeq tm1 tm2 =
     | Let (rel1, m1, bnd1), Let (rel2, m2, bnd2) ->
       rel1 = rel2 && aeq m1 m2 && eq_binder aeq bnd1 bnd2
     (* native *)
-    | Unit, Unit -> true
-    | UIt, UIt -> true
+    | Unit s1, Unit s2 -> eq_sort s1 s2
+    | UIt s1, UIt s2 -> eq_sort s1 s2
     | Bool, Bool -> true
     | BTrue, BTrue -> true
     | BFalse, BFalse -> true
@@ -201,31 +201,36 @@ let rec aeq tm1 tm2 =
     | NZero, NZero -> true
     | NSucc (i1, m1), NSucc (i2, m2) -> i1 = i2 && aeq m1 m2
     (* data *)
-    | Sigma (rel1, s1, a1, bnd1), Sigma (rel2, s2, a2, bnd2) ->
-      rel1 = rel2 && eq_sort s1 s2 && aeq a1 a2 && eq_binder aeq bnd1 bnd2
-    | Pair (rel1, s1, m1, n1), Pair (rel2, s2, m2, n2) ->
-      rel1 = rel2 && s1 = s2 && aeq m1 m2 && aeq n1 n2
+    | Sigma (rel11, rel12, s1, a1, bnd1), Sigma (rel21, rel22, s2, a2, bnd2) ->
+      rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2 && aeq a1 a2
+      && eq_binder aeq bnd1 bnd2
+    | Pair (rel11, rel12, s1, m1, n1), Pair (rel21, rel22, s2, m2, n2) ->
+      rel11 = rel21 && rel12 = rel22 && s1 = s2 && aeq m1 m2 && aeq n1 n2
     | Data (d1, ss1, ms1), Data (d2, ss2, ms2) ->
       D.equal d1 d2 && List.equal eq_sort ss1 ss2 && List.equal aeq ms1 ms2
     | Cons (c1, ss1, ms1, ns1), Cons (c2, ss2, ms2, ns2) ->
       C.equal c1 c2 && List.equal eq_sort ss1 ss2 && List.equal aeq ms1 ms2
       && List.equal aeq ns1 ns2
-    | Match (m1, bnd1, cls1), Match (m2, bnd2, cls2) ->
-      aeq m1 m2 && eq_binder aeq bnd1 bnd2
+    | Match (rel1, m1, bnd1, cls1), Match (rel2, m2, bnd2, cls2) ->
+      rel1 = rel2 && aeq m1 m2 && eq_binder aeq bnd1 bnd2
       && List.equal
            (fun cl1 cl2 ->
              match (cl1, cl2) with
-             | PIt rhs1, PIt rhs2 -> aeq rhs1 rhs2
+             | PIt (s1, rhs1), PIt (s2, rhs2) -> eq_sort s1 s2 && aeq rhs1 rhs2
              | PTrue rhs1, PTrue rhs2 -> aeq rhs1 rhs2
              | PFalse rhs1, PFalse rhs2 -> aeq rhs1 rhs2
              | PZero rhs1, PZero rhs2 -> aeq rhs1 rhs2
              | PSucc bnd1, PSucc bnd2 -> eq_binder aeq bnd1 bnd2
-             | PPair (rel1, s1, bnd1), PPair (rel2, s2, bnd2) ->
-               rel1 = rel2 && eq_sort s1 s2 && eq_mbinder aeq bnd1 bnd2
+             | PPair (rel11, rel12, s1, bnd1), PPair (rel21, rel22, s2, bnd2) ->
+               rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2
+               && eq_mbinder aeq bnd1 bnd2
              | PCons (c1, bnd1), PCons (c2, bnd2) ->
                C.equal c1 c2 && eq_mbinder aeq bnd1 bnd2
              | _ -> false)
            cls1 cls2
+    (* absurd *)
+    | Bot, Bot -> true
+    | Absurd (a1, m1), Absurd (a2, m2) -> aeq a1 a2 && aeq m1 m2
     (* equality *)
     | Eq (a1, m1, n1), Eq (a2, m2, n2) -> aeq a1 a2 && aeq m1 m2 && aeq n1 n2
     | Refl m1, Refl m2 -> aeq m1 m2
@@ -276,8 +281,8 @@ let rec eq_tm ?(expand_const = false) env m1 m2 =
       | Let (rel1, m1, bnd1), Let (rel2, m2, bnd2) ->
         rel1 = rel2 && equal m1 m2 && eq_binder equal bnd1 bnd2
       (* native *)
-      | Unit, Unit -> true
-      | UIt, UIt -> true
+      | Unit s1, Unit s2 -> eq_sort s1 s2
+      | UIt s1, UIt s2 -> eq_sort s1 s2
       | Bool, Bool -> true
       | BTrue, BTrue -> true
       | BFalse, BFalse -> true
@@ -285,31 +290,40 @@ let rec eq_tm ?(expand_const = false) env m1 m2 =
       | NZero, NZero -> true
       | NSucc (i1, m1), NSucc (i2, m2) -> i1 = i2 && equal m1 m2
       (* data *)
-      | Sigma (rel1, s1, a1, bnd1), Sigma (rel2, s2, a2, bnd2) ->
-        rel1 = rel2 && eq_sort s1 s2 && equal a1 a2 && eq_binder equal bnd1 bnd2
-      | Pair (rel1, s1, m1, n1), Pair (rel2, s2, m2, n2) ->
-        rel1 = rel2 && eq_sort s1 s2 && equal m1 m2 && equal n1 n2
+      | Sigma (rel11, rel12, s1, a1, bnd1), Sigma (rel21, rel22, s2, a2, bnd2)
+        ->
+        rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2 && equal a1 a2
+        && eq_binder equal bnd1 bnd2
+      | Pair (rel11, rel12, s1, m1, n1), Pair (rel21, rel22, s2, m2, n2) ->
+        rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2 && equal m1 m2
+        && equal n1 n2
       | Data (d1, ss1, ms1), Data (d2, ss2, ms2) ->
         D.equal d1 d2 && List.equal eq_sort ss1 ss2 && List.equal equal ms1 ms2
       | Cons (c1, ss1, ms1, ns1), Cons (c2, ss2, ms2, ns2) ->
         C.equal c1 c2 && List.equal eq_sort ss1 ss2 && List.equal equal ms1 ms2
         && List.equal equal ns1 ns2
-      | Match (m1, bnd1, cls1), Match (m2, bnd2, cls2) ->
-        equal m1 m2 && eq_binder equal bnd1 bnd2
+      | Match (rel1, m1, bnd1, cls1), Match (rel2, m2, bnd2, cls2) ->
+        rel1 = rel2 && equal m1 m2 && eq_binder equal bnd1 bnd2
         && List.equal
              (fun cl1 cl2 ->
                match (cl1, cl2) with
-               | PIt rhs1, PIt rhs2 -> equal rhs1 rhs2
+               | PIt (s1, rhs1), PIt (s2, rhs2) ->
+                 eq_sort s1 s2 && equal rhs1 rhs2
                | PTrue rhs1, PTrue rhs2 -> equal rhs1 rhs2
                | PFalse rhs1, PFalse rhs2 -> equal rhs1 rhs2
                | PZero rhs1, PZero rhs2 -> equal rhs1 rhs2
                | PSucc bnd1, PSucc bnd2 -> eq_binder equal bnd1 bnd2
-               | PPair (rel1, s1, bnd1), PPair (rel2, s2, bnd2) ->
-                 rel1 = rel2 && eq_sort s1 s2 && eq_mbinder equal bnd1 bnd2
+               | PPair (rel11, rel12, s1, bnd1), PPair (rel21, rel22, s2, bnd2)
+                 ->
+                 rel11 = rel21 && rel12 = rel22 && eq_sort s1 s2
+                 && eq_mbinder equal bnd1 bnd2
                | PCons (c1, bnd1), PCons (c2, bnd2) ->
                  C.equal c1 c2 && eq_mbinder equal bnd1 bnd2
                | _ -> false)
              cls1 cls2
+      (* absurd *)
+      | Bot, Bot -> true
+      | Absurd (a1, m1), Absurd (a2, m2) -> equal a1 a2 && equal m1 m2
       (* equality *)
       | Eq (a1, m1, n1), Eq (a2, m2, n2) ->
         equal a1 a2 && equal m1 m2 && equal n1 n2

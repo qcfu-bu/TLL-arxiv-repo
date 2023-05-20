@@ -263,11 +263,11 @@ let rec trans_tm nspc = function
       let x = Syntax1.(V.mk "_") in
       let cl, iset2 = trans_cl nspc (Binder (p, n)) in
       let mot = bind_var x (mk_meta nspc) in
-      let n = Syntax1.(_Match (_Var x) mot (box_list [ cl ])) in
+      let n = Syntax1.(_Match R (_Var x) mot (box_list [ cl ])) in
       (Syntax1.(_Let (trans_rel rel) m (bind_var x n)), ISet.union iset1 iset2))
   (* native *)
-  | Unit -> Syntax1.(_Unit, ISet.empty)
-  | UIt -> Syntax1.(_UIt, ISet.empty)
+  | Unit s -> Syntax1.(_Unit (trans_sort nspc s), ISet.empty)
+  | UIt s -> Syntax1.(_UIt (trans_sort nspc s), ISet.empty)
   | Bool -> Syntax1.(_Bool, ISet.empty)
   | BTrue -> Syntax1.(_BTrue, ISet.empty)
   | BFalse -> Syntax1.(_BFalse, ISet.empty)
@@ -277,19 +277,21 @@ let rec trans_tm nspc = function
     let m, iset = trans_tm nspc m in
     Syntax1.(_NSucc i m, iset)
   (* data *)
-  | Sigma (rel, s, a, Binder (id, b)) ->
+  | Sigma (rel1, rel2, s, a, Binder (id, b)) ->
     let a, iset1 = trans_tm nspc a in
     let x = Syntax1.(V.mk id) in
     let b, iset2 = trans_tm ((id, EVar x) :: nspc) b in
     Syntax1.
-      ( _Sigma (trans_rel rel) (trans_sort nspc s) a (bind_var x b)
+      ( _Sigma (trans_rel rel1) (trans_rel rel2) (trans_sort nspc s) a
+          (bind_var x b)
       , ISet.union iset1 iset2 )
-  | Pair (rel, s, m, n) ->
+  | Pair (rel1, rel2, s, m, n) ->
     let m, iset1 = trans_tm nspc m in
     let n, iset2 = trans_tm nspc n in
     Syntax1.
-      (_Pair (trans_rel rel) (trans_sort nspc s) m n, ISet.union iset1 iset2)
-  | Match (m, Binder (id, a), cls) ->
+      ( _Pair (trans_rel rel1) (trans_rel rel2) (trans_sort nspc s) m n
+      , ISet.union iset1 iset2 )
+  | Match (rel, m, Binder (id, a), cls) ->
     let m, iset1 = trans_tm nspc m in
     let x = Syntax1.(V.mk id) in
     let a, iset2 = trans_tm ((id, EVar x) :: nspc) a in
@@ -301,8 +303,13 @@ let rec trans_tm nspc = function
         cls ([], ISet.empty)
     in
     Syntax1.
-      ( _Match m (bind_var x a) (box_list cls)
+      ( _Match (trans_rel rel) m (bind_var x a) (box_list cls)
       , ISet.union (ISet.union iset1 iset2) iset3 )
+  (* absurd *)
+  | Bot -> Syntax1.(_Bot, ISet.empty)
+  | Absurd m ->
+    let m, iset = trans_tm nspc m in
+    Syntax1.(_Absurd (mk_meta nspc) m, iset)
   (* equality *)
   | Eq (m, n) ->
     let m, iset1 = trans_tm nspc m in
@@ -335,7 +342,7 @@ let rec trans_tm nspc = function
       let x = Syntax1.(V.mk "_") in
       let cl, iset2 = trans_cl nspc (Binder (p, n)) in
       let mot = bind_var x (mk_meta nspc) in
-      let n = Syntax1.(_Match (_Var x) mot (box_list [ cl ])) in
+      let n = Syntax1.(_Match R (_Var x) mot (box_list [ cl ])) in
       (Syntax1.(_MLet m (bind_var x n)), ISet.union iset1 iset2))
   (* session *)
   | Proto -> Syntax1.(_Proto, ISet.empty)
@@ -374,9 +381,9 @@ let rec trans_tm nspc = function
     Syntax1.(_Rand m n, ISet.union iset1 iset2)
 
 and trans_cl nspc = function
-  | Binder (PIt, m) ->
+  | Binder (PIt s, m) ->
     let m, iset = trans_tm nspc m in
-    Syntax1.(_PIt m, iset)
+    Syntax1.(_PIt (trans_sort nspc s) m, iset)
   | Binder (PTrue, m) ->
     let m, iset = trans_tm nspc m in
     Syntax1.(_PTrue m, iset)
@@ -391,11 +398,12 @@ and trans_cl nspc = function
     let m, iset = trans_tm ((id, EVar x) :: nspc) m in
     let bnd = bind_var x m in
     Syntax1.(_PSucc bnd, iset)
-  | Binder (PPair (rel, s, id1, id2), m) ->
+  | Binder (PPair (rel1, rel2, s, id1, id2), m) ->
     let nspc, xs = trans_xs nspc [ id1; id2 ] in
     let m, iset = trans_tm nspc m in
     let bnd = bind_mvar (Array.of_list xs) m in
-    Syntax1.(_PPair (trans_rel rel) (trans_sort nspc s) bnd, iset)
+    Syntax1.
+      (_PPair (trans_rel rel1) (trans_rel rel2) (trans_sort nspc s) bnd, iset)
   | Binder (PCons (id, ids), m) -> (
     match find_cons id nspc with
     | Some (c, _, _) ->
@@ -479,7 +487,7 @@ let rec trans_dcl nspc = function
     let nspc = (id, EConst (x, i)) :: nspc in
     let guard = ISet.mem x iset in
     (nspc, Syntax1.(_DTm (trans_rel rel) x guard sch))
-  | DData (id, sch, dconss) ->
+  | DData (rel, id, sch, dconss) ->
     let d = D.mk id in
     let sch, i =
       trans_scheme nspc
@@ -492,7 +500,7 @@ let rec trans_dcl nspc = function
     in
     let nspc = (id, EData (d, i)) :: nspc in
     let nspc, dconss = trans_dconss nspc dconss in
-    (nspc, Syntax1._DData d sch (box_list dconss))
+    (nspc, Syntax1._DData (trans_rel rel) d sch (box_list dconss))
 
 let trans_dcls nspc dcls =
   let rec aux nspc dcls =

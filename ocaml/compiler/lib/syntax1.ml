@@ -37,8 +37,8 @@ type tm =
   | App of tm * tm
   | Let of rel * tm * (tm, tm) binder
   (* native *)
-  | Unit
-  | UIt
+  | Unit of sort
+  | UIt of sort
   | Bool
   | BTrue
   | BFalse
@@ -46,11 +46,14 @@ type tm =
   | NZero
   | NSucc of int * tm
   (* data *)
-  | Sigma of rel * sort * tm * (tm, tm) binder
-  | Pair of rel * sort * tm * tm
+  | Sigma of rel * rel * sort * tm * (tm, tm) binder
+  | Pair of rel * rel * sort * tm * tm
   | Data of D.t * sorts * tms
   | Cons of C.t * sorts * tms * tms
-  | Match of tm * (tm, tm) binder * cls
+  | Match of rel * tm * (tm, tm) binder * cls
+  (* absurd *)
+  | Bot
+  | Absurd of tm * tm
   (* equality *)
   | Eq of tm * tm * tm
   | Refl of tm
@@ -76,19 +79,19 @@ type tm =
 and tms = tm list
 
 and cl =
-  | PIt of tm
+  | PIt of sort * tm
   | PTrue of tm
   | PFalse of tm
   | PZero of tm
   | PSucc of (tm, tm) binder
-  | PPair of rel * sort * (tm, tm) mbinder
+  | PPair of rel * rel * sort * (tm, tm) mbinder
   | PCons of C.t * (tm, tm) mbinder
 
 and cls = cl list
 
 type dcl =
   | DTm of rel * I.t * bool * (tm * tm) scheme
-  | DData of D.t * tm param scheme * dconss
+  | DData of rel * D.t * tm param scheme * dconss
 
 and 'a scheme = (sort, 'a) mbinder
 and dcls = dcl list
@@ -169,8 +172,8 @@ let _App = box_apply2 (fun m n -> App (m, n))
 let _Let rel = box_apply2 (fun m bnd -> Let (rel, m, bnd))
 
 (* native *)
-let _Unit = box Unit
-let _UIt = box UIt
+let _Unit = box_apply (fun s -> Unit s)
+let _UIt = box_apply (fun s -> UIt s)
 let _Bool = box Bool
 let _BTrue = box BTrue
 let _BFalse = box BFalse
@@ -179,11 +182,15 @@ let _NZero = box NZero
 let _NSucc i = box_apply (fun m -> NSucc (i, m))
 
 (* data *)
-let _Sigma rel = box_apply3 (fun s a bnd -> Sigma (rel, s, a, bnd))
-let _Pair rel = box_apply3 (fun s m n -> Pair (rel, s, m, n))
+let _Sigma rel1 rel2 = box_apply3 (fun s a bnd -> Sigma (rel1, rel2, s, a, bnd))
+let _Pair rel1 rel2 = box_apply3 (fun s m n -> Pair (rel1, rel2, s, m, n))
 let _Data d = box_apply2 (fun ss ms -> Data (d, ss, ms))
 let _Cons c = box_apply3 (fun ss ms ns -> Cons (c, ss, ms, ns))
-let _Match = box_apply3 (fun m bnd cls -> Match (m, bnd, cls))
+let _Match rel = box_apply3 (fun m bnd cls -> Match (rel, m, bnd, cls))
+
+(* absurd *)
+let _Bot = box Bot
+let _Absurd = box_apply2 (fun a m -> Absurd (a, m))
 
 (* equality *)
 let _Eq = box_apply3 (fun a m n -> Eq (a, m, n))
@@ -211,17 +218,17 @@ let _Sleep = box_apply (fun m -> Sleep m)
 let _Rand = box_apply2 (fun m n -> Rand (m, n))
 
 (* cl *)
-let _PIt = box_apply (fun m -> PIt m)
+let _PIt = box_apply2 (fun s m -> PIt (s, m))
 let _PTrue = box_apply (fun m -> PTrue m)
 let _PFalse = box_apply (fun m -> PFalse m)
 let _PZero = box_apply (fun m -> PZero m)
 let _PSucc = box_apply (fun m -> PSucc m)
-let _PPair rel = box_apply2 (fun s bnd -> PPair (rel, s, bnd))
+let _PPair rel1 rel2 = box_apply2 (fun s bnd -> PPair (rel1, rel2, s, bnd))
 let _PCons c = box_apply (fun bnd -> PCons (c, bnd))
 
 (* dcl *)
 let _DTm rel x guard = box_apply (fun sch -> DTm (rel, x, guard, sch))
-let _DData d = box_apply2 (fun sch dconss -> DData (d, sch, dconss))
+let _DData rel d = box_apply2 (fun sch dconss -> DData (rel, d, sch, dconss))
 
 (* dcons *)
 let _DCons c = box_apply (fun sch -> DCons (c, sch))
@@ -263,8 +270,8 @@ let rec lift_tm = function
   | App (m, n) -> _App (lift_tm m) (lift_tm n)
   | Let (rel, m, bnd) -> _Let rel (lift_tm m) (box_binder lift_tm bnd)
   (* native *)
-  | Unit -> _Unit
-  | UIt -> _UIt
+  | Unit s -> _Unit (lift_sort s)
+  | UIt s -> _UIt (lift_sort s)
   | Bool -> _Bool
   | BTrue -> _BTrue
   | BFalse -> _BFalse
@@ -272,9 +279,10 @@ let rec lift_tm = function
   | NZero -> _NZero
   | NSucc (i, m) -> _NSucc i (lift_tm m)
   (* data *)
-  | Sigma (rel, s, a, bnd) ->
-    _Sigma rel (lift_sort s) (lift_tm a) (box_binder lift_tm bnd)
-  | Pair (rel, s, m, n) -> _Pair rel (lift_sort s) (lift_tm m) (lift_tm n)
+  | Sigma (rel1, rel2, s, a, bnd) ->
+    _Sigma rel1 rel2 (lift_sort s) (lift_tm a) (box_binder lift_tm bnd)
+  | Pair (rel1, rel2, s, m, n) ->
+    _Pair rel1 rel2 (lift_sort s) (lift_tm m) (lift_tm n)
   | Data (d, ss, ms) ->
     let ss = List.map lift_sort ss in
     let ms = List.map lift_tm ms in
@@ -284,21 +292,24 @@ let rec lift_tm = function
     let ms = List.map lift_tm ms in
     let ns = List.map lift_tm ns in
     _Cons c (box_list ss) (box_list ms) (box_list ns)
-  | Match (m, bnd, cls) ->
+  | Match (rel, m, bnd, cls) ->
     let cls =
       List.map
         (function
-          | PIt m -> _PIt (lift_tm m)
+          | PIt (s, m) -> _PIt (lift_sort s) (lift_tm m)
           | PTrue m -> _PTrue (lift_tm m)
           | PFalse m -> _PFalse (lift_tm m)
           | PZero m -> _PZero (lift_tm m)
           | PSucc bnd -> _PSucc (box_binder lift_tm bnd)
-          | PPair (rel, s, bnd) ->
-            _PPair rel (lift_sort s) (box_mbinder lift_tm bnd)
+          | PPair (rel1, rel2, s, bnd) ->
+            _PPair rel1 rel2 (lift_sort s) (box_mbinder lift_tm bnd)
           | PCons (c, bnd) -> _PCons c (box_mbinder lift_tm bnd))
         cls
     in
-    _Match (lift_tm m) (box_binder lift_tm bnd) (box_list cls)
+    _Match rel (lift_tm m) (box_binder lift_tm bnd) (box_list cls)
+  (* absurd *)
+  | Bot -> _Bot
+  | Absurd (a, m) -> _Absurd (lift_tm a) (lift_tm m)
   (* equality *)
   | Eq (a, m, n) -> _Eq (lift_tm a) (lift_tm m) (lift_tm n)
   | Refl m -> _Refl (lift_tm m)
@@ -338,8 +349,8 @@ let lift_dcl = function
   | DTm (rel, x, guard, sch) ->
     _DTm rel x guard
       (box_mbinder (fun (a, m) -> box_pair (lift_tm a) (lift_tm m)) sch)
-  | DData (d, sch, dconss) ->
-    _DData d (box_mbinder (lift_param lift_tm) sch) (lift_dconss dconss)
+  | DData (rel, d, sch, dconss) ->
+    _DData rel d (box_mbinder (lift_param lift_tm) sch) (lift_dconss dconss)
 
 let lift_dcls dcls = box_list (List.map lift_dcl dcls)
 

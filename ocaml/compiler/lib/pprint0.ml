@@ -57,10 +57,11 @@ let rec pp_tm fmt = function
   | Let (N, m, Binder (Left id, n)) ->
     pf fmt "let {%s} = %a in %a" id pp_tm m pp_tm n
   | Let (_, m, Binder (Right p, n)) ->
-    pf fmt "let %a = %a in %a" pp_p p pp_tm m pp_tm n
-  (* native *)
-  | Unit -> pf fmt "unit"
-  | UIt -> pf fmt "()"
+    pf fmt "let %a = %a in %a" pp_p p pp_tm m pp_tm n (* native *)
+  | Unit s -> pf fmt "unit‹s›"
+  | UIt U -> pf fmt "()"
+  | UIt L -> pf fmt "⟨⟩"
+  | UIt s -> pf fmt "()‹s›"
   | Bool -> pf fmt "bool"
   | BTrue -> pf fmt "true"
   | BFalse -> pf fmt "false"
@@ -68,26 +69,42 @@ let rec pp_tm fmt = function
   | NZero -> pf fmt "O"
   | NSucc (i, m) -> pf fmt "%a.+%d" pp_tm m i
   (* data *)
-  | Sigma (R, U, a, Binder (id, b)) ->
+  | Sigma (R, R, U, a, Binder (id, b)) ->
     pf fmt "(∃ (%s : %a) × %a)" id pp_tm a pp_tm b
-  | Sigma (N, U, a, Binder (id, b)) ->
+  | Sigma (R, N, U, a, Binder (id, b)) ->
+    pf fmt "(∃ (%s : %a) × {%a})" id pp_tm a pp_tm b
+  | Sigma (N, R, U, a, Binder (id, b)) ->
     pf fmt "(∃ {%s : %a} × %a)" id pp_tm a pp_tm b
-  | Sigma (R, L, a, Binder (id, b)) ->
+  | Sigma (R, R, L, a, Binder (id, b)) ->
     pf fmt "(∃ (%s : %a) ⊗ %a)" id pp_tm a pp_tm b
-  | Sigma (N, L, a, Binder (id, b)) ->
+  | Sigma (R, N, L, a, Binder (id, b)) ->
+    pf fmt "(∃ (%s : %a) ⊗ {%a})" id pp_tm a pp_tm b
+  | Sigma (N, R, L, a, Binder (id, b)) ->
     pf fmt "(∃ {%s : %a} ⊗ %a)" id pp_tm a pp_tm b
-  | Sigma (R, SId sid, a, Binder (id, b)) ->
+  | Sigma (R, R, SId sid, a, Binder (id, b)) ->
     pf fmt "(exists‹%s›(%s : %a), %a)" sid id pp_tm a pp_tm b
-  | Sigma (N, SId sid, a, Binder (id, b)) ->
+  | Sigma (R, N, SId sid, a, Binder (id, b)) ->
+    pf fmt "(exists‹%s›(%s : %a), {%a})" sid id pp_tm a pp_tm b
+  | Sigma (N, R, SId sid, a, Binder (id, b)) ->
     pf fmt "(exists‹%s›{%s : %a}, %a)" sid id pp_tm a pp_tm b
-  | Pair (R, U, m, n) -> pf fmt "(%a, %a)" pp_tm m pp_tm n
-  | Pair (N, U, m, n) -> pf fmt "({%a}, %a)" pp_tm m pp_tm n
-  | Pair (R, L, m, n) -> pf fmt "⟨%a, %a⟩" pp_tm m pp_tm n
-  | Pair (N, L, m, n) -> pf fmt "⟨{%a}, %a⟩" pp_tm m pp_tm n
-  | Pair (R, SId sid, m, n) -> pf fmt "tup‹%s›(%a, %a)" sid pp_tm m pp_tm n
-  | Pair (N, SId sid, m, n) -> pf fmt "tup‹%s›({%a}, %a)" sid pp_tm m pp_tm n
-  | Match (m, Binder (id, a), cls) ->
+  | Sigma (N, N, _, _, _) -> failwith "pprint0.pp_tm"
+  | Pair (R, R, U, m, n) -> pf fmt "(%a, %a)" pp_tm m pp_tm n
+  | Pair (R, N, U, m, n) -> pf fmt "(%a, {%a})" pp_tm m pp_tm n
+  | Pair (N, R, U, m, n) -> pf fmt "({%a}, %a)" pp_tm m pp_tm n
+  | Pair (R, R, L, m, n) -> pf fmt "⟨%a, %a⟩" pp_tm m pp_tm n
+  | Pair (R, N, L, m, n) -> pf fmt "⟨%a, {%a}⟩" pp_tm m pp_tm n
+  | Pair (N, R, L, m, n) -> pf fmt "⟨{%a}, %a⟩" pp_tm m pp_tm n
+  | Pair (R, R, SId sid, m, n) -> pf fmt "tup‹%s›(%a, %a)" sid pp_tm m pp_tm n
+  | Pair (R, N, SId sid, m, n) -> pf fmt "tup‹%s›(%a, {%a})" sid pp_tm m pp_tm n
+  | Pair (N, R, SId sid, m, n) -> pf fmt "tup‹%s›({%a}, %a)" sid pp_tm m pp_tm n
+  | Pair (N, N, _, _, _) -> failwith "pprint0.pp_tm"
+  | Match (R, m, Binder (id, a), cls) ->
     pf fmt "match %a as %s in %a with %a" pp_tm m id pp_tm a pp_cls cls
+  | Match (N, m, Binder (id, a), cls) ->
+    pf fmt "match {%a} as %s in %a with %a" pp_tm m id pp_tm a pp_cls cls
+  (* absurd *)
+  | Bot -> pf fmt "⊥"
+  | Absurd m -> pf fmt "absurd %a" pp_tm m
   (* equality *)
   | Eq (m, n) -> pf fmt "%a ≡ %a" pp_tm m pp_tm n
   | Refl -> pf fmt "refl"
@@ -118,17 +135,23 @@ let rec pp_tm fmt = function
   | Rand (m, n) -> pf fmt "rand %a %a" pp_tm m pp_tm n
 
 and pp_p fmt = function
-  | PIt -> pf fmt "()"
+  | PIt U -> pf fmt "()"
+  | PIt L -> pf fmt "⟨⟩"
+  | PIt s -> pf fmt "()‹%a›" pp_sort s
   | PTrue -> pf fmt "true"
   | PFalse -> pf fmt "false"
   | PZero -> pf fmt "O"
   | PSucc id -> pf fmt "S %s" id
-  | PPair (R, U, id1, id2) -> pf fmt "(%s, %s)" id1 id2
-  | PPair (N, U, id1, id2) -> pf fmt "({%s}, %s)" id1 id2
-  | PPair (R, L, id1, id2) -> pf fmt "⟨%s, %s⟩" id1 id2
-  | PPair (N, L, id1, id2) -> pf fmt "⟨{%s}, %s⟩" id1 id2
-  | PPair (R, SId sid, id1, id2) -> pf fmt "tup‹%s›(%s, %s)" sid id1 id2
-  | PPair (N, SId sid, id1, id2) -> pf fmt "tup‹%s›({%s}, %s)" sid id1 id2
+  | PPair (R, R, U, id1, id2) -> pf fmt "(%s, %s)" id1 id2
+  | PPair (R, N, U, id1, id2) -> pf fmt "(%s, {%s})" id1 id2
+  | PPair (N, R, U, id1, id2) -> pf fmt "({%s}, %s)" id1 id2
+  | PPair (R, R, L, id1, id2) -> pf fmt "⟨%s, %s⟩" id1 id2
+  | PPair (R, N, L, id1, id2) -> pf fmt "⟨%s, {%s}⟩" id1 id2
+  | PPair (N, R, L, id1, id2) -> pf fmt "⟨{%s}, %s⟩" id1 id2
+  | PPair (R, R, SId sid, id1, id2) -> pf fmt "tup‹%s›(%s, %s)" sid id1 id2
+  | PPair (N, R, SId sid, id1, id2) -> pf fmt "tup‹%s›({%s}, %s)" sid id1 id2
+  | PPair (R, N, SId sid, id1, id2) -> pf fmt "tup‹%s›(%s, {%s})" sid id1 id2
+  | PPair (N, N, _, _, _) -> failwith "pprint0.pp_p"
   | PCons (id, ids) -> pf fmt "%s %a" id (list ~sep:sp string) ids
 
 and pp_cl fmt (Binder (p, m)) = pf fmt "%a ⇒ %a" pp_p p pp_tm m
@@ -162,8 +185,11 @@ let pp_dcons fmt (DCons (id, sch)) = pf fmt "%s of %a" id (pp_scheme pp_ptl) sch
 let pp_dcl fmt = function
   | DTm (R, id, sch) -> pf fmt "program %s%a" id (pp_scheme pp_args) sch
   | DTm (N, id, sch) -> pf fmt "logical %s%a" id (pp_scheme pp_args) sch
-  | DData (id, sch, dconss) ->
+  | DData (R, id, sch, dconss) ->
     pf fmt "inductive %s%a = %a" id (pp_scheme pp_ptm) sch
+      (list ~sep:pipe pp_dcons) dconss
+  | DData (N, id, sch, dconss) ->
+    pf fmt "logical inductive %s%a = %a" id (pp_scheme pp_ptm) sch
       (list ~sep:pipe pp_dcons) dconss
 
 let pp_dcls fmt dcls = pf fmt "%a" (list ~sep:break pp_dcl) dcls

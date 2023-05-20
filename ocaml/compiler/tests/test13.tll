@@ -1,23 +1,52 @@
-program id (n : nat) (acc : nat) : nat =
-  match n with
-  | O ⇒ acc
-  | S n0 ⇒ id n0 (S acc)
+-- A "logical inductive type" is an inductive type whose constructors
+-- can only be used at the logical level. If inductive type has no more
+-- than 1 constructor, it can be eliminated at the program level using
+-- an "irrlevant match" expression.
+logical inductive uniq‹s› (A : Type‹s›) (m : A) : U =
+| Uniq of (x : A) (_ : m ≡ x)
+
+-- Irrelevant match expressions function exactly the same as normal match
+-- expressions when used at the logical level. When used at the program
+-- level, irrelevant match exressions do not consume their discriminee and
+-- can only match inductive types with no more than 1 constructor. Pattern
+-- variables introduced by irrlevant match can only be used computationally
+-- irrelevantly at the program level.
+program ex {x : uniq _ 0} : string =
+  match {x} with
+  | Uniq _ _ ⇒ "hello" ^ "world"
   end
 
-program idM0 (n : nat) (acc : nat) : IO nat =
-  match n with
-  | O ⇒ return acc
-  | S n0 ⇒ idM0 n0 (S acc)
+-- The compiler will prune ex_bad1 because the pattern variable n introduced
+-- by the irrelevant match cannot be used relevantly.
+program ex_bad1 {x : uniq _ 0} : string =
+  match {x} with
+  | Uniq n _ ⇒ "hello" ^ "world" ^ string_of_nat n
   end
 
-program idM (n : nat) (acc : nat) : IO nat =
-  match n with
-  | O ⇒ return acc
-  | S n0 ⇒
-    let n0 ⇐ idM0 n0 0 in
-    idM n0 (S acc)
+logical inductive or‹s,t› (A : Type‹s›) (B : Type‹t›) : U =
+| InjL of (x : A)
+| InjR of (y : B)
+
+-- The compiler will prune ex_bad2 because the irrelevant match expression
+-- has 2 cases. If the discriminee were to be erased, there would be not 
+-- way to determine which branch to take.
+program ex_bad2 : string =
+  match { (InjL () : or ⊤ ⊥) } with
+  | InjL _ ⇒ "hello"
+  | InjR _ ⇒ "world"
+  end
+
+-- The compiler will accept ex_bad3 because the x is a relevant argument.
+-- This means that we can perform relevant match on x against the 2
+-- constructors of `or ⊤ ⊥`. However, it would be impossible to construct
+-- such an x because the constructors of `or ⊤ ⊥` cannot be used at the
+-- program level. So ex_bad3 can never be called at the program level.
+program ex_bad3 (x : or ⊤ ⊥) : string =
+  match x with
+  | InjL _ ⇒ "hello"
+  | InjR _ ⇒ "world"
   end
 
 program main : IO unit =
-  let x ⇐ idM 8000000 0 in
-  return ()
+  let s = ex (Uniq 0 refl) in
+  print s

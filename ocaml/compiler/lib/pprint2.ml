@@ -90,7 +90,7 @@ and pp_tm fmt = function
       | None -> pf fmt "@[(%a@;<1 2>@[%a@])@]" C.pp c (list ~sep:sp pp_tm) ms
     else
       pf fmt "@[(%a@;<1 2>@[%a@])@]" C.pp c (list ~sep:sp pp_tm) ms
-  | Match (_, m, cls) ->
+  | Match (_, _, m, cls) ->
     pf fmt "@[<v 0>@[match %a with@]@;<1 0>@[%a@]@;<1 0>end@]" pp_tm m pp_cls
       cls
   (* monadic *)

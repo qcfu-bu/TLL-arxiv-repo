@@ -50,9 +50,6 @@ let downarrow1 = [%sedlex.regexp? 8659] (* ⇓ *)
 let times = [%sedlex.regexp? 215] (* × *)
 let otimes = [%sedlex.regexp? 8855] (* ⊗ *)
 
-(* absurd *)
-let absurd_type = [%sedlex.regexp? 8869] (* ⊥ *)
-
 (* unit *)
 let unit_type = [%sedlex.regexp? "unit"]
 
@@ -86,6 +83,10 @@ let str_cat = [%sedlex.regexp? '^']
 
 (* list *)
 let list_cons = [%sedlex.regexp? "::"]
+
+(* truth *)
+let top = [%sedlex.regexp? 8868] (* ⊤ *)
+let bot = [%sedlex.regexp? 8869] (* ⊥ *)
 
 (* equality *)
 let equal = [%sedlex.regexp? '=']
@@ -129,6 +130,7 @@ let tm_with = [%sedlex.regexp? "with"]
 let tm_if = [%sedlex.regexp? "if"]
 let tm_then = [%sedlex.regexp? "then"]
 let tm_else = [%sedlex.regexp? "else"]
+let tm_absurd = [%sedlex.regexp? "absurd"]
 let tm_refl = [%sedlex.regexp? "refl"]
 let tm_rew = [%sedlex.regexp? "rew"]
 let tm_io = [%sedlex.regexp? "IO"]
@@ -209,8 +211,6 @@ let rec tokenize buf =
   (* products *)
   | times -> TIMES
   | otimes -> OTIMES
-  (* absurd *)
-  | absurd_type -> ABSURD_TYPE
   (* unit *)
   | unit_type -> UNIT_TYPE
   (* bool *)
@@ -240,6 +240,9 @@ let rec tokenize buf =
   | str_cat -> STR_CAT
   (* list *)
   | list_cons -> LIST_CONS
+  (* truth *)
+  | top -> TOP
+  | bot -> BOT
   (* equality *)
   | equal -> EQUAL
   | equiv -> EQUIV
@@ -274,6 +277,7 @@ let rec tokenize buf =
   | tm_if -> TM_IF
   | tm_then -> TM_THEN
   | tm_else -> TM_ELSE
+  | tm_absurd -> TM_ABSURD
   | tm_refl -> TM_REFL
   | tm_rew -> TM_REW
   | tm_io -> TM_IO

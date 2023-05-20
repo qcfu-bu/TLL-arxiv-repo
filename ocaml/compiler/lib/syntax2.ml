@@ -35,7 +35,7 @@ type tm =
   (* data *)
   | Pair of tm * tm
   | Cons of C.t * tms
-  | Match of sort * tm * cls
+  | Match of rel * sort * tm * cls
   (* monadic *)
   | Return of tm
   | MLet of tm * (tm, tm) binder
@@ -106,7 +106,7 @@ let _NSucc i = box_apply (fun m -> NSucc (i, m))
 (* data *)
 let _Pair = box_apply2 (fun m n -> Pair (m, n))
 let _Cons c = box_apply (fun ms -> Cons (c, ms))
-let _Match s = box_apply2 (fun m cls -> Match (s, m, cls))
+let _Match rel s = box_apply2 (fun m cls -> Match (rel, s, m, cls))
 
 (* monadic *)
 let _Return = box_apply (fun m -> Return m)
@@ -161,7 +161,7 @@ let rec lift_tm = function
   | Cons (c, ms) ->
     let ms = List.map lift_tm ms in
     _Cons c (box_list ms)
-  | Match (s, m, cls) ->
+  | Match (rel, s, m, cls) ->
     let cls =
       List.map
         (function
@@ -174,7 +174,7 @@ let rec lift_tm = function
           | PCons (c, bnd) -> _PCons c (box_mbinder lift_tm bnd))
         cls
     in
-    _Match s (lift_tm m) (box_list cls)
+    _Match rel s (lift_tm m) (box_list cls)
   (* monadic *)
   | Return m -> _Return (lift_tm m)
   | MLet (m, bnd) -> _MLet (lift_tm m) (box_binder lift_tm bnd)

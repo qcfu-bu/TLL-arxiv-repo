@@ -1,6 +1,9 @@
 logical eq_sym‹s› (A : Type‹s›) (x y : A) : x ≡ y → y ≡ x =
   fn e ⇒ rew [y, _ ⇒ y ≡ x] e in refl
 
+logical eq_trans‹s› (A : Type‹s›) (x y z : A) : x ≡ y → y ≡ z → x ≡ z =
+  fn e1 e2 ⇒ rew[y0, _ ⇒ x ≡ y0] e2 in e1
+
 logical f_equal‹s,t› (A : Type‹s›) (B : Type‹t›) (f : A → B) (x y : A) : x ≡ y → f x ≡ f y =
   fn e ⇒ rew [y,p ⇒ f x ≡ f y] e in refl
 
@@ -10,33 +13,34 @@ logical bool_absurd (e : true ≡ false) : ⊥ =
               | false ⇒ ⊥
               end] e in ()
 
-logical nat_absurd (n : nat) (e : S n ≡ O) : ⊥ =
-  rew [x,_ ⇒ match x with
-             | O ⇒ ⊥
-             | S _ ⇒ unit
-             end] e in ()
-
 logical nat_inv (n1 n2 : nat) (e : S n1 ≡ S n2) : n1 ≡ n2 =
   f_equal _ _ pred _ _ e
 
--- Reflect boolean equality for nat into propositional equality.
+-- reflect boolean equality for nat into propositional equality
 logical eqn_reflect (m n : nat) : eqn m n ≡ true → m ≡ n =
   match m as m0 in eqn m0 n ≡ true → m0 ≡ n with
   | O ⇒
     match n as n0 in eqn 0 n0 ≡ true → 0 ≡ n0 with
     | O ⇒ fn _ ⇒ refl
-    | S n ⇒ fn e ⇒ absurd_elim _ (bool_absurd (eq_sym _ _ _ e))
+    | S n ⇒ fn e ⇒ absurd (bool_absurd (eq_sym _ _ _ e))
     end
   | S m ⇒
     match n as n0 in eqn (S m) n0 ≡ true → (S m) ≡ n0 with
-    | O ⇒ fn e ⇒ absurd_elim _ (bool_absurd (eq_sym _ _ _ e))
+    | O ⇒ fn e ⇒ absurd (bool_absurd (eq_sym _ _ _ e))
     | S n ⇒ fn e ⇒ f_equal _ _ (fn x ⇒ S x) _ _ (eqn_reflect m n e)
     end
   end
 
--- A word is a string of length 5.
-inductive word : U =
-| Word of (s : string) {pf : strlen s ≡ 5}
+-- reflect boolean equality for char into propositional equality
+logical eqc_reflect (c1 c2 : char) : eqc c1 c2 ≡ true → c1 ≡ c2 =
+  match c1 as c0 in eqc c0 c2 ≡ true → c0 ≡ c2 with
+  | Char m ⇒
+    match c2 as c0 in eqc (Char m) c0 ≡ true → (Char m) ≡ c0 with
+    | Char n ⇒ fn e ⇒
+      let e = eqn_reflect _ _ e in
+      f_equal _ _ (fn x ⇒ Char x) _ _ e
+    end
+  end
 
 -- Check to see if string s contains char c.
 program contains (c : char) (s : string) : bool =
@@ -47,83 +51,141 @@ program contains (c : char) (s : string) : bool =
     else contains c s
   end
 
--- The difference of two strings (of equal length).
--- Equal positions result in "Y" and non-equal positions result in "N".
--- Suppose s1 = "ABCDE" and s2 = "AACDF", then their diff is "YNYYN".
-program string_diff (ans s1 s2 : string) : string =
-  match s1 with
-  | EmptyString ⇒ EmptyString
-  | String c1 s1 ⇒
-    match s2 with
-    | EmptyString ⇒ EmptyString
-    | String c2 s2 ⇒
-      if eqc c1 c2 then
-        "Y" ^ string_diff ans s1 s2
-      else
-        if contains c2 ans then
-          "I" ^ string_diff ans s1 s2
-        else
-          "N" ^ string_diff ans s1 s2
-    end
-  end
+-- Relation that the "string-difference" of a and b is df.
+logical inductive diff (ans : string) (a b df : string) : U =
+| diff_EmptyString of
+  (_ : a ≡ EmptyString)
+  (_ : b ≡ EmptyString)
+  (_ : df ≡ EmptyString)
+| diff_StringY of (c : char) (s1 s2 s3 : string)
+  (_ : diff ans s1 s2 s3)
+  (_ : a ≡ String c s1)
+  (_ : b ≡ String c s2)
+  (_ : df ≡ "Y" ^ s3)
+| diff_StringI of (c1 c2 : char) (s1 s2 s3 : string)
+  (_ : eqc c1 c2 ≡ false)
+  (_ : contains c2 ans ≡ true)
+  (_ : diff ans s1 s2 s3)
+  (_ : a ≡ String c1 s1)
+  (_ : b ≡ String c2 s2)
+  (_ : df ≡ "I" ^ s3)
+| diff_StringN of (c1 c2 : char) (s1 s2 s3 : string)
+  (_ : eqc c1 c2 ≡ false)
+  (_ : contains c2 ans ≡ false)
+  (_ : diff ans s1 s2 s3)
+  (_ : a ≡ String c1 s1)
+  (_ : b ≡ String c2 s2)
+  (_ : df ≡ "N" ^ s3)
 
--- Verify that the string_diff function produces diffs of the correct length.
-logical string_diff_len (n : nat) (ans s1 s2 : string) :
-  n ≡ strlen s1 → n ≡ strlen s2 → n ≡ strlen (string_diff ans s1 s2) =
-  match s1 as s0 in n ≡ strlen s0 → n ≡ strlen s2 → n ≡ strlen (string_diff ans s0 s2) with
+-- Certified program for computing the string-difference of s1 and s2.
+program string_diff (ans s1 s2 : string) :
+  {strlen s1 ≡ strlen s2} → ∃ (df : string) ⊗ {diff ans s1 s2 df}
+= match s1 as s0 in
+    {strlen s0 ≡ strlen s2} → ∃ (df : string) ⊗ {diff ans s0 s2 df}
+  with
   | EmptyString ⇒
-    match s2 as s0 in n ≡ 0 → n ≡ strlen s0 → n ≡ 0 with
-    | EmptyString ⇒ fn e1 _ ⇒ e1
-    | String c2 s2 ⇒ fn e1 e2 ⇒
-      let e3 = rew [n, _ ⇒ n ≡ 0] e2 in e1 in
-      absurd_elim _ (nat_absurd _ e3)
-    end
-  | String c1 s1 ⇒ 
     match s2 as s0 in
-      n ≡ strlen (String c1 s1) → n ≡ strlen s0 → n ≡ strlen (string_diff ans (String c1 s1) s0)
+      {0 ≡ strlen s0} → ∃ (df : string) ⊗ {diff ans EmptyString s0 df}
     with
-    | EmptyString ⇒ fn e1 e2 ⇒
-      let e3 = rew [n, _ ⇒ n ≡ 0] e1 in e2 in
-      absurd_elim _ (nat_absurd _ e3)
-    | String c2 s2 ⇒  fn e1 e2 ⇒
-      match n as n0 in n ≡ n0 → n0 ≡ strlen (string_diff ans (String c1 s1) (String c2 s2)) with
-      | O ⇒ fn e0 ⇒
-        let e3 = rew [n, _ ⇒ n ≡ 0 ] e1 in e0 in
-        absurd_elim _ (nat_absurd _ e3)
-      | S n0 ⇒ fn e0 ⇒
-        let e3 = rew [n1, _ ⇒ n1 ≡ S (strlen s1)] e0 in e1 in
-        let e4 = rew [n1, _ ⇒ n1 ≡ S (strlen s2)] e0 in e2 in
-        let e5 = nat_inv _ _ e3 in
-        let e6 = nat_inv _ _ e4 in
-        match eqc c1 c2 as b0 in
-          S n0 ≡ strlen
-            (if b0 then "Y" ^ string_diff ans s1 s2
-             else if contains c2 ans then "I" ^ string_diff ans s1 s2
-                  else "N" ^ string_diff ans s1 s2)
+    | EmptyString ⇒ fn {e} ⇒ ⟨EmptyString, {diff_EmptyString refl refl refl}⟩
+    | String c2 s2 ⇒ fn {e} ⇒
+      rew [x, _ ⇒ match x with
+                  | O ⇒ unit‹L›
+                  | S _ ⇒ ∃ (df : string) ⊗ {diff ans EmptyString (String c2 s2) df}
+                  end] e in ⟨⟩
+    end
+  | String c1 s1 ⇒
+    match s2 as s0 in
+      {S (strlen s1) ≡ strlen s0} → ∃ (df : string) ⊗ {diff ans (String c1 s1) s0 df}
+    with
+    | EmptyString ⇒ fn {e} ⇒
+      rew [x, _ ⇒ match x with
+                  | O ⇒ ∃ (df : string) ⊗ {diff ans (String c1 s1) EmptyString df}
+                  | S _ ⇒ unit‹L›
+                  end] e in ⟨⟩
+    | String c2 s2 ⇒ fn {e} ⇒
+      let {e} = nat_inv _ _ e in
+      let ⟨df, {pf}⟩ = string_diff ans s1 s2 e in
+      match eqc c1 c2 as b0 in
+        {eqc c1 c2 ≡ b0} → ∃ (df : string) ⊗ {diff ans (String c1 s1) (String c2 s2) df}
+      with
+      | true ⇒ fn {e1} ⇒
+        let {e1} = eqc_reflect _ _ e1 in
+        let {h} = rew [c, _ ⇒ String c s2 ≡ String c1 s2] e1 in refl in
+        ⟨"Y" ^ df, {diff_StringY _ _ _ _ pf refl h refl}⟩
+      | false ⇒ fn {e1} ⇒
+        match contains c2 ans as b0 in
+          {contains c2 ans ≡ b0} →
+          ∃ (df : string) ⊗ {diff ans (String c1 s1) (String c2 s2) df}
         with
-        | true ⇒ rew [n1, _ ⇒ S n0 ≡ S n1] (string_diff_len _ _ _ _ e5 e6) in refl
-        | false ⇒
-          match contains c2 ans as b0 in 
-            S n0 ≡ strlen (if b0 then "I" ^ string_diff ans s1 s2
-                           else "N" ^ string_diff ans s1 s2)
-          with
-          | true ⇒ rew [n1, _ ⇒ S n0 ≡ S n1] (string_diff_len _ _ _ _ e5 e6) in refl
-          | false ⇒ rew [n1, _ ⇒ S n0 ≡ S n1] (string_diff_len _ _ _ _ e5 e6) in refl
-          end
-        end
+        | true ⇒ fn {e2} ⇒ ⟨"I" ^ df, {diff_StringI _ _ _ _ _ e1 e2 pf refl refl refl}⟩
+        | false ⇒ fn {e2} ⇒ ⟨"N" ^ df, {diff_StringN _ _ _ _ _ e1 e2 pf refl refl refl}⟩
+        end refl
       end refl
     end
   end
 
--- Restricting the string_diff programs to words.
-program wordle_diff (ans guess : word) : word =
-  match ans with Word ans pf1 ⇒
-  match guess with Word guess pf2 ⇒
-    let {pf1} = eq_sym _ _ _ pf1 in
-    let {pf2} = eq_sym _ _ _ pf2 in
-    let {pf} = string_diff_len _ _ _ _ pf1 pf2 in
-    Word (string_diff ans ans guess) (eq_sym _ _ _ pf)
-  end end
+logical diff_len (ans s1 s2 df : string) (h : diff ans s1 s2 df) : strlen df ≡ strlen s1 =
+  match h with
+  | diff_EmptyString pf1 _ pf3 ⇒
+    let pf1 = eq_sym _ _ _ pf1 in
+    let pf3 = eq_sym _ _ _ pf3 in
+    rew[s0, _ ⇒ strlen df ≡ strlen s0] pf1 in
+    rew[df0, _ ⇒ strlen df0 ≡ 0] pf3 in
+    refl
+  | diff_StringY c s0 s3 s4 h1 pf1 _ pf3 ⇒
+    let pf1 = eq_sym _ _ _ pf1 in
+    let pf3 = eq_sym _ _ _ pf3 in
+    rew[s0, _ ⇒ strlen df ≡ strlen s0] pf1 in
+    rew[df0, _ ⇒ strlen df0 ≡ strlen (String c s0)] pf3 in
+    rew[n, _ ⇒ S (strlen s4) ≡ S n] (diff_len _ _ _ _ h1) in
+    refl
+  | diff_StringI c1 _ s0 s3 s4 _ _ h3 pf1 _ pf3 ⇒
+    let pf1 = eq_sym _ _ _ pf1 in
+    let pf3 = eq_sym _ _ _ pf3 in
+    rew[s0, _ ⇒ strlen df ≡ strlen s0] pf1 in
+    rew[df0, _ ⇒ strlen df0 ≡ strlen (String c1 s0)] pf3 in
+    rew[n, _ ⇒ S (strlen s4) ≡ S n] (diff_len _ _ _ _ h3) in
+    refl
+  | diff_StringN c1 _ s0 s3 s4 _ _ h3 pf1 _ pf3 ⇒
+    let pf1 = eq_sym _ _ _ pf1 in
+    let pf3 = eq_sym _ _ _ pf3 in
+    rew[s0, _ ⇒ strlen df ≡ strlen s0] pf1 in
+    rew[df0, _ ⇒ strlen df0 ≡ strlen (String c1 s0)] pf3 in
+    rew[n, _ ⇒ S (strlen s4) ≡ S n] (diff_len _ _ _ _ h3) in
+    refl
+  end
+
+-- A word is a string of length 5.
+inductive word : U =
+| Word of (s : string) {pf : strlen s ≡ 5}
+
+-- Relation that the "wordle-difference"" of ans and guess is df.
+logical inductive wdiff (ans guess df : word) : U =
+| diff_Word of (s1 s2 s3 : string)
+ (pf1 : strlen s1 ≡ 5)
+ (pf2 : strlen s2 ≡ 5)
+ (pf3 : strlen s3 ≡ 5)
+ (_ : ans ≡ Word s1 pf1)
+ (_ : guess ≡ Word s2 pf2)
+ (_ : df ≡ Word s3 pf3)
+ (_ : diff s1 s1 s2 s3)
+  
+-- Certified program for computing the wordle-difference of ans and guess.
+program word_diff (ans guess : word) : ∃ (df : word) ⊗ {wdiff ans guess df} =
+  match ans as ans0 in
+    {ans ≡ ans0} → ∃ (df : word) ⊗ {wdiff ans guess df}
+  with Word s1 pf1 ⇒ fn {e1} ⇒
+    match guess as guess0 in
+      {guess ≡ guess0} → ∃ (df : word) ⊗ {wdiff ans guess df}
+    with Word s2 pf2 ⇒ fn {e2} ⇒
+      let {e} = eq_trans _ _ _ _ pf1 (eq_sym _ _ _ pf2) in
+      let ⟨s3, {h}⟩ = string_diff s1 s1 s2 e in
+      let {e} = diff_len _ _ _ _ h in
+      let {pf} = eq_trans _ _ _ _ e pf1 in
+      ⟨Word s3 pf, {diff_Word s1 s2 s3 pf1 pf2 pf e1 e2 refl h}⟩
+    end refl
+  end refl
 
 -- Boolean equaltiy for words.
 program eqw (w1 w2 : word) : bool =
@@ -136,9 +198,9 @@ program eqw (w1 w2 : word) : bool =
 -- ———————————————————————————————————————————————
 -- Wordle Game
 
--- The server picks a secret word and the player must guess it in 5 tries.
+-- The server picks a secret string and the player must guess it in 5 tries.
 -- If the player guesses the correct word, the player wins.
--- If the player guesses the wrong word, the server gives the play truthful feedback.
+-- If the player guesses the wrong word, the server gives the player truthful feedback.
 -- ———————————————————————————————————————————————
 
 -- ans is the secret answer held by the server
@@ -150,10 +212,10 @@ logical wordle_loop (ans : word) (repeat : nat) : proto =
     ⇓(guess : word) →
     ⇑(b : bool) → ⇑{b ≡ eqw ans guess} →
     if b then •
-    else ⇑(w : word) → ⇑{w ≡ wordle_diff ans guess} → wordle_loop ans repeat
+    else ⇑(df : word) → ⇑{wdiff ans guess df} → wordle_loop ans repeat
   end
 
--- the wordle protocol enfore that the server choocse a single answer and
+-- The wordle protocol enforces that the server choocse a single answer and
 -- give truthful feedback to the player
 logical wordle : proto = ⇑{ans : word} → ⇑(repeat : nat) → wordle_loop ans repeat
 
@@ -163,7 +225,7 @@ logical loop_hc (ans : word) (repeat : nat) : L = hc⟨ wordle_loop ans repeat �
 logical wordle_ch : L = ch⟨ wordle ⟩
 logical wordle_hc : L = hc⟨ wordle ⟩
 
--- query the user until they input a word
+-- Query the user until they input a word.
 program read_word (_ : unit) : IO word =
   let s ⇐ readline () in
   match eqn (strlen s) 5 as b0 in {eqn (strlen s) 5 ≡ b0} → IO word with
@@ -187,7 +249,7 @@ program player_loop {ans : word} (repeat : nat) (c : loop_hc ans repeat) : IO un
     let ⟨{pf}, c⟩ ⇐ recv c in
     match b as b0 in
       hc⟨if b0 then •
-         else ⇑(w : word) → ⇑{w ≡ wordle_diff ans guess} → wordle_loop ans repeat⟩
+         else ⇑(df : word) → ⇑{wdiff ans guess df} → wordle_loop ans repeat⟩
       ⊸ IO unit
     with
     | true ⇒ ln c ⇒
@@ -212,31 +274,31 @@ program player (c : wordle_hc) : IO unit =
 
 -- ———————————————————————————————————————————————
 
-inductive subset‹s,r,t› (A : Type‹s›) (P : A → Type‹r›) : Type‹t› =
-| SPair of (m : A) {pf : P m}
+-- Relation that element x is at position n in list xs.
+logical inductive at (A : U) (x : A) (n : nat) (xs : list‹_,U› A) : U =
+| at_O of (xs0 : list A)
+  (_ : n ≡ 0)
+  (_ : xs ≡ (x :: xs0))
+| at_S of (n0 : nat) (x0 : A) (xs0 : list A) (h : at A x n0 xs0)
+  (_ : n ≡ S n0)
+  (_ : xs ≡ x0 :: xs0)
 
-inductive at (A : U) (x : A) (n : nat) (xs : list‹_,U› A) : U =
-| at_O of (xs0 : list A) {pf1 : n ≡ 0} {pf2 : xs ≡ (x :: xs0)}
-| at_S of (n0 : nat) (x0 : A) (xs0 : list A) (h : at A x n0 xs0) {pf1 : n ≡ S n0} {pf2 : xs ≡ x0 :: xs0}
-
-logical ltn_inv (m n : nat) : (S m) < (S n) ≡ true → m < n ≡ true =
-  fn h ⇒ h
-
+-- Certified program that will always get the nth element of list xs
+-- provided that n is within bounds.
 program get_at {A : U} (n : nat) (xs : list A) :
-  {n < llen _ xs ≡ true} → subset‹_,_,U› _ (fn x ⇒ at _ x n xs)
-= match xs as xs0 in {n < llen _ xs0 ≡ true} → subset _ (fn x ⇒ at _ x n xs0) with
+  {n < llen _ xs ≡ true} → ∃ (x : A) ⊗ {at _ x n xs}
+= match xs as xs0 in {n < llen _ xs0 ≡ true} → ∃ (x : A) ⊗ {at _ x n xs0} with
   | nil ⇒ fn {e} ⇒
     rew [b, _ ⇒ match b with
-                | true ⇒ subset _ (fn x ⇒ at _ x n nil)
-                | false ⇒ unit
-                end] e in ()
+                | true ⇒ ∃ (x : A) ⊗ {at _ x n nil}
+                | false ⇒ unit‹L›
+                end] e in ⟨⟩
   | x :: xs ⇒
-    match n as n0 in {n0 < S (llen _ xs) ≡ true} → subset _ (fn x0 ⇒ at _ x0 n0 (x :: xs)) with
-    | O ⇒ fn {e} ⇒ SPair x (at_O xs refl refl)
+    match n as n0 in {n0 < S (llen _ xs) ≡ true} → ∃ (x0 : A) ⊗ {at _ x0 n0 (x :: xs)} with
+    | O ⇒ fn {e} ⇒ ⟨x, {at_O xs refl refl}⟩
     | S n ⇒ fn {e} ⇒
-      match get_at _ n xs (ltn_inv _ _ e) with SPair x0 pf ⇒
-      SPair x0 (at_S _ _ _ pf refl refl)
-      end
+      let ⟨x0, {pf}⟩ = get_at _ n xs e in
+      ⟨x0, {at_S _ _ _ pf refl refl}⟩
     end
   end
 
@@ -266,9 +328,9 @@ program rand_word (_ : unit) : IO word =
   in
   let r ⇐ rand 0 19 in
   match r with Between n _ pf ⇒
-  match get_at _ n words pf with SPair w _ ⇒
+    let ⟨w, {_}⟩ = get_at _ n words pf in
     return w
-  end end
+  end
 
 program server_loop (ans : word) (repeat : nat) (c : loop_ch ans repeat) : IO unit =
   match repeat as repeat0 in loop_ch ans repeat0 → IO unit with
@@ -283,13 +345,14 @@ program server_loop (ans : word) (repeat : nat) (c : loop_ch ans repeat) : IO un
     let c ⇐ send c refl in
     match b as b0 in
       ch⟨if b0 then •
-         else ⇑(w : word) → ⇑{w ≡ wordle_diff ans guess} → wordle_loop ans repeat⟩
+         else ⇑(df : word) → ⇑{wdiff ans guess df} → wordle_loop ans repeat⟩
       ⊸ IO unit
     with
     | true ⇒ ln c ⇒ close c
     | false ⇒ ln c ⇒
-      let c ⇐ send c (wordle_diff ans guess) in
-      let c ⇐ send c refl in
+      let ⟨df, {pf}⟩ = word_diff ans guess in
+      let c ⇐ send c df in
+      let c ⇐ send c pf in
       server_loop ans repeat c 
     end c
   end c
