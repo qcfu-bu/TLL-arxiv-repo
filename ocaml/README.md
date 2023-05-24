@@ -25,9 +25,9 @@ The emitted C code can be further compiled to a `main.out` executable by running
 - [test05.tll](./compiler/tests/test05.tll): Readline/printline from spawned thread.
 - [test07.tll](./compiler/tests/test07.tll): McCarthy 91 function.
 - [test08.tll](./compiler/tests/test08.tll): Encoding mutable references using dependent session types.
-- [test09.tll](./compiler/tests/test09.tll): Intrinsically verified concurrent mergesort (unbounded thread spawning).
+- [test09.tll](./compiler/tests/test09.tll): Verified concurrent mergesort (unbounded thread spawning).
 - [test11.tll](./compiler/tests/test11.tll): Unverified concurrent mergesort (bounded thread spawning).
-- [test12.tll](./compiler/tests/test12.tll): Intrinsically verified concurrent mergesort (bounded thread spawning).
+- [test12.tll](./compiler/tests/test12.tll): Verified concurrent mergesort (bounded thread spawning).
 - [test13.tll](./compiler/tests/test13.tll): Logical inductive types and irrelevant match expressions.
 - [test14.tll](./compiler/tests/test14.tll): Append function for length indexed linear vectors.
 - [test15.tll](./compiler/tests/test15.tll): Append function for length indexed sort-polymorphic vectors.
