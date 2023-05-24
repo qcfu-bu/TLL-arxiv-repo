@@ -1,7 +1,7 @@
 -- A "logical inductive type" is an inductive type whose constructors
--- can only be used at the logical level. If inductive type has no more
--- than 1 constructor, it can be eliminated at the program level using
--- an "irrlevant match" expression.
+-- can only be used at the logical level. If an inductive type has no
+-- more than 1 constructor, it can be eliminated at the program level
+-- using an "irrelevant match" expression.
 logical inductive uniq‹s› (A : Type‹s›) (m : A) : U =
 | Uniq of (x : A) (_ : m ≡ x)
 
@@ -28,7 +28,7 @@ logical inductive or‹s,t› (A : Type‹s›) (B : Type‹t›) : U =
 | InjR of (y : B)
 
 -- The compiler will prune ex_bad2 because the irrelevant match expression
--- has 2 cases. If the discriminee were to be erased, there would be not 
+-- has 2 cases. If the discriminee were to be erased, there would be no 
 -- way to determine which branch to take.
 program ex_bad2 : string =
   match { (InjL () : or ⊤ ⊥) } with
@@ -40,7 +40,7 @@ program ex_bad2 : string =
 -- This means that we can perform relevant match on x against the 2
 -- constructors of `or ⊤ ⊥`. However, it would be impossible to construct
 -- such an x because the constructors of `or ⊤ ⊥` cannot be used at the
--- program level. So ex_bad3 can never be called at the program level.
+-- program level. So ex_bad3 can never be called at runtime.
 program ex_bad3 (x : or ⊤ ⊥) : string =
   match x with
   | InjL _ ⇒ "hello"
