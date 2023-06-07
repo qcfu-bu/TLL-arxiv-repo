@@ -19,7 +19,7 @@
  (name tll)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends ocaml dune ppxlib ppx_deriving fmt sedlex menhirLib bindlib)
  (tags
   (topics "to describe" your project)))
 

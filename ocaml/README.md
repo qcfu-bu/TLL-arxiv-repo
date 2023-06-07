@@ -1,6 +1,7 @@
 # TLL Compiler
 
 ## OCaml Dependencies
+Tested with ocaml 4.14.0.
 - `dune`
 - `ppxlib`
 - `ppx_deriving`
@@ -8,11 +9,17 @@
 - `sedlex`
 - `menhirLib`
 - `bindlib`
+Dependencies can be installed by running `opam install . --deps-only` in the project root.
+
+## C Dependencies 
+Tested with clang 14.0.3.
+- `pthreads`
+Unix-like operating systems (Linux, MacOS, WSL, etc.) should come with `pthreads`.
 
 ## Usage
 Example source files of varying complexity are given in the `tests` directory. 
 
-To compile a TLL program such as `test12.tll`, execute the command `dune exec --profile release bin/main.exe tests/test12.tll` from the project root.
+To compile a TLL program such as `test19.tll`, execute the command `dune exec --profile release bin/main.exe tests/test19.tll` from the project root.
 
 A `log.tll` file will be generated at the project root logging the intermediate representation at each phase of compilation. Another `main.c` file will be generated in the `c` directory containing the emitted C code. 
 

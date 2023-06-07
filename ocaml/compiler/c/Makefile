@@ -1,4 +1,4 @@
-CC=gcc
+CC=clang
 RMF=rm -rf
 # CFLAGS=-g -lpthread
 CFLAGS=-g -O2 -lpthread -Wl,-stack_size -Wl,0xf000000

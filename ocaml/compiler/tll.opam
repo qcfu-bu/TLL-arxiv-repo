@@ -12,6 +12,12 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.6"}
+  "ppxlib"
+  "ppx_deriving"
+  "fmt"
+  "sedlex"
+  "menhirLib"
+  "bindlib"
   "odoc" {with-doc}
 ]
 build: [
