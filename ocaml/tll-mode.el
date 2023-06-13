@@ -6,7 +6,7 @@
                     "open" "send" "recv" "close"))
 
 (setq tll-pragma-start-regexp "\\(?:#\\)")
-(setq tll-sorts-regexp "\\(?:\\_<U\\_>\\|\\_<Ln\\_>\\)")
+(setq tll-sorts-regexp "\\(?:\\_<U\\_>\\|\\_<L\\_>\\)")
 (setq tll-keywords-regexp (regexp-opt tll-keywords 'symbols))
 (setq tll-lambda-regexp (regexp-opt tll-lambda 'symbols))
 (setq tll-builtin-regexp (regexp-opt tll-builtin 'symbols))
