@@ -16,6 +16,16 @@ logical coprime (a b : nat) : U = gcd a b ≡ 1
 
 -- ———————————————————————————————————————————————
 -- Rivest–Shamir–Adleman public-key
+
+-- x and y are large prime numbers (primality is assumed)
+-- n is the product of x and y (part of public key)
+-- tot is the totient value of n (part of private key)
+-- e is the exponent (part of public key)
+-- P0 is the plaintext of the client
+-- C is the ciphertext of the client encrypted with public key (n, e)
+
+-- Only the public key (n, e) and ciphertext C are transmitted
+-- across the channel at runtime.
 -- ———————————————————————————————————————————————
 logical RSA : proto =
   ⇑{x : nat} → ⇑{y : nat} →

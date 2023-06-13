@@ -6,7 +6,15 @@ program pow (n m : nat) : nat =
 
 -- ———————————————————————————————————————————————
 -- Diffie–Hellman key exchange
--- secrets a and b are synchronized irrelevantly
+
+-- p and g are known public values
+-- a is the secret of Alice
+-- A is the public value of Alice
+-- b is the secret of Bob
+-- B is the public value of Bob
+
+-- Secrets a and b are synchronized implicitly
+-- through irrelevance quantification.
 -- ———————————————————————————————————————————————
 logical DH (p g : nat) : proto =
   ⇑{a : nat} → ⇑(A : nat) → ⇑{ A ≡ pow g a % p } →
