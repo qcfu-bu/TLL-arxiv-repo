@@ -16,7 +16,7 @@ depends: [
   "ppx_deriving"
   "fmt"
   "sedlex"
-  "menhirLib"
+  "menhir"
   "bindlib"
   "odoc" {with-doc}
 ]
