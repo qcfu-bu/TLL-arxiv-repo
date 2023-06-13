@@ -19,13 +19,18 @@ Unix-like operating systems (Linux, MacOS, WSL, etc.) should come with `pthreads
 ## Usage
 Example source files of varying complexity are given in the [`tests`](./compiler/tests) directory. 
 
-To compile a TLL program such as `test19.tll`, execute the command `dune exec --profile release bin/main.exe tests/test19.tll` from the [project root](./compiler).
+To compile a TLL program such as `test19.tll`, execute the command 
+`dune exec --profile release bin/main.exe tests/test19.tll` from the [project root](./compiler).
 
-A `log.tll` file will be generated at the project root logging the intermediate representation at each phase of compilation. Another `main.c` file will be generated in the [`c`](./compiler/c) directory containing the emitted C code. 
+A `log.tll` file will be generated at the project root logging the intermediate representation 
+at each phase of compilation. Another `main.c` file will be generated in the [`c`](./compiler/c) 
+directory containing the emitted C code. 
 
-The emitted C code can be further compiled to a `main.out` executable by running `make -C ./c` from the project root.
+The emitted C code can be further compiled to a `main.out` executable by running `make -C ./c` 
+from the project root.
 
-The included [`tll-mode.el`](./tll-mode.el) provides optional syntax highlighting for Emacs users. Place `tll-mode.el` in your Emacs load path and add `(require 'tll-mode)` to your init file.
+The included [`tll-mode.el`](./tll-mode.el) provides optional syntax highlighting for Emacs users. 
+Place `tll-mode.el` in your Emacs load path and add `(require 'tll-mode)` to your init file.
 
 ## Notable Examples
 - [test01.tll](./compiler/tests/test01.tll): Proof of identity for sort-polymorphic length function.
