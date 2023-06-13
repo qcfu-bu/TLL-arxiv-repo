@@ -1,16 +1,15 @@
 ;;; tll-mode.el --- major mode for tll -*- lexical-binding: t; -*-
-(setq tll-types '("let" "in" "rew" "match" "as" "with" "end"
-                  "absurd" "if" "then" "else" "fork" "return"))
 (setq tll-keywords '("of" "size"))
 (setq tll-lambda '("fn" "ln" "fun" "val" "main"))
-(setq tll-session '("open" "send" "recv" "close"))
+(setq tll-builtin '("let" "in" "rew" "match" "as" "with" "end"
+                    "absurd" "if" "then" "else" "fork" "return"
+                    "open" "send" "recv" "close"))
 
 (setq tll-pragma-start-regexp "\\(?:#\\)")
-(setq tll-sorts-regexp "\\(?:\\_<U\\_>\\|\\_<L\\_>\\)")
-(setq tll-types-regexp (regexp-opt tll-types 'symbols))
+(setq tll-sorts-regexp "\\(?:\\_<U\\_>\\|\\_<Ln\\_>\\)")
 (setq tll-keywords-regexp (regexp-opt tll-keywords 'symbols))
 (setq tll-lambda-regexp (regexp-opt tll-lambda 'symbols))
-(setq tll-session-regexp (regexp-opt tll-session 'symbols))
+(setq tll-builtin-regexp (regexp-opt tll-builtin 'symbols))
 (setq tll-quantifier-regexp "\\(?:∀\\|∃\\|⇑\\|⇓\\|•\\)")
 (setq tll-magic-regexp "\\(?:bad_magic\\)")
 (setq tll-infer-regexp "\\(?:infer_tm\\)")
@@ -23,10 +22,9 @@
          (2 font-lock-variable-name-face))
         (,tll-pragma-start-regexp . font-lock-keyword-face)
         (,tll-sorts-regexp . font-lock-constant-face)
-        (,tll-types-regexp . font-lock-type-face)
         (,tll-keywords-regexp . font-lock-keyword-face)
         (,tll-lambda-regexp . font-lock-keyword-face)
-        (,tll-session-regexp . font-lock-builtin-face)
+        (,tll-builtin-regexp . font-lock-builtin-face)
         (,tll-quantifier-regexp . font-lock-constant-face)
         (,tll-magic-regexp . tuareg-font-lock-error-face)
         (,tll-infer-regexp . font-lock-string-face)

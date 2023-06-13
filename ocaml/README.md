@@ -25,6 +25,8 @@ A `log.tll` file will be generated at the project root logging the intermediate 
 
 The emitted C code can be further compiled to a `main.out` executable by running `make -C ./c` from the project root.
 
+The included `tll-mode.el` provides optional syntax highlighting for Emacs users. Place `tll-mode.el` in your Emacs load path and add `(require 'tll-mode)` to your init file.
+
 ## Notable Examples
 - [test01.tll](./compiler/tests/test01.tll): Proof of identity for sort-polymorphic length function.
 - [test02.tll](./compiler/tests/test02.tll): Verification of sort-polymorphic append function.
