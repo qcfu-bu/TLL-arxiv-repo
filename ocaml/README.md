@@ -17,11 +17,11 @@ Tested with clang 14.0.3.
 Unix-like operating systems (Linux, MacOS, WSL, etc.) should come with `pthreads`.
 
 ## Usage
-Example source files of varying complexity are given in the `tests` directory. 
+Example source files of varying complexity are given in the [`tests`](./compiler/tests) directory. 
 
-To compile a TLL program such as `test19.tll`, execute the command `dune exec --profile release bin/main.exe tests/test19.tll` from the project root.
+To compile a TLL program such as `test19.tll`, execute the command `dune exec --profile release bin/main.exe tests/test19.tll` from the [project root](./compiler).
 
-A `log.tll` file will be generated at the project root logging the intermediate representation at each phase of compilation. Another `main.c` file will be generated in the `c` directory containing the emitted C code. 
+A `log.tll` file will be generated at the project root logging the intermediate representation at each phase of compilation. Another `main.c` file will be generated in the [`c`](./compiler/c) directory containing the emitted C code. 
 
 The emitted C code can be further compiled to a `main.out` executable by running `make -C ./c` from the project root.
 
