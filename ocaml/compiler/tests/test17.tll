@@ -87,5 +87,5 @@ program main : IO unit =
       close c0; client c
   in
   let c0 ⇐ send c0 c in
-  close c0; sleep 1
+  close c0
 

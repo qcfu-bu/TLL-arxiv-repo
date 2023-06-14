@@ -1268,6 +1268,10 @@ module Program = struct
       (m_elab, usg)
 end
 
+let warn_const x = pr "@[@;<2 0>warning - pruned constant %a@]@." I.pp x
+let warn_data x = pr "@[@;<2 0>warning - pruned inductive %a@]@." D.pp x
+let warn_cons x = pr "@[@;<2 0>warning - pruned constructor %a@]@." C.pp x
+
 let const_extend x ss =
   match ss with
   | [] -> x
@@ -1337,7 +1341,7 @@ let rec check_dcls res ctx env = function
               , (x1, s) :: xs )
           with
           | e ->
-            let _ = epr "pruned_const(%a, %a)@." I.pp x1 exn e in
+            let _ = warn_const x1 in
             (res_acc, ctx_acc, env_acc, xs))
         init
         Resolver.(RMap.empty, ctx, RMap.empty, [])
@@ -1383,7 +1387,7 @@ let rec check_dcls res ctx env = function
               , Usage.merge usg usg_acc )
           with
           | e ->
-            let _ = epr "pruned_const(%a, %a)@." I.pp x1 exn e in
+            let _ = warn_const x1 in
             (dtm_elab, res_acc, ctx_acc, env_acc, xs, usg_acc))
         init
         Resolver.([], RMap.empty, ctx, RMap.empty, [], Usage.empty)
@@ -1425,7 +1429,7 @@ let rec check_dcls res ctx env = function
                 , ctx_acc )
           with
           | e ->
-            let _ = epr "pruned_data(%a, %a)@." D.pp d1 exn e in
+            let _ = warn_data d1 in
             (ddata_elab, res_acc, ctx_acc))
         init
         Resolver.([], res, ctx)
@@ -1455,7 +1459,7 @@ and check_dconss ss res ctx env rel0 d0 dconss res_acc ctx_acc =
         Some Syntax2.(_DCons c1 i, ptl)
       with
       | e ->
-        let _ = epr "pruned_cons(%a, %a)@." C.pp c1 exn e in
+        let _ = warn_cons c1 in
         None
     in
     let dconss_elab, res_acc, ctx_acc, cs =

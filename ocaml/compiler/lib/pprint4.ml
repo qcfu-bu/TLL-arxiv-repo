@@ -224,10 +224,10 @@ let pp_prog fmt (procs, instr, _) =
   let xs = gather_init SSet.empty instr in
   let ys = gather_var SSet.empty instr in
   pf fmt
-    "#include\"runtime.h\"@.@.@[<v 0>%a@;\
+    "#include \"runtime.h\"@.@.@[<v 0>%a@;\
      <1 0>%a@]@.@.%a@.@.@[<v 0>int main() {@;\
      <1 2>@[<v 0>instr_init();@;\
      <1 0>@[%a@]@;\
      <1 0>%a@;\
-     <1 0>return 0;@]@;\
+     <1 0>instr_exit();@]@;\
      <1 0>}@]" pp_dcls procs pp_xs xs pp_procs procs pp_xs ys pp_instrs instr

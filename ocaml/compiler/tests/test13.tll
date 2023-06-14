@@ -28,8 +28,8 @@ logical inductive or‹s,t› (A : Type‹s›) (B : Type‹t›) : U =
 | InjR of (y : B)
 
 -- The compiler will prune ex_bad2 because the irrelevant match expression
--- has 2 cases. If the discriminee were to be erased, there would be no 
--- way to determine which branch to take.
+-- has 2 cases. If the discriminee were to be erased, there would be no way
+-- to determine which branch to take.
 program ex_bad2 : string =
   match { (InjL () : or ⊤ ⊥) } with
   | InjL _ ⇒ "hello"

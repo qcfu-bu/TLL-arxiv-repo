@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -17,10 +18,25 @@
 
 pthread_attr_t attr;
 
-void instr_init() {
+void instr_init(void) {
+  const rlim_t stacksize = 0xf000000;
+  struct rlimit rl;
+  getrlimit(RLIMIT_STACK, &rl);
+  if (rl.rlim_cur < stacksize) {
+    rl.rlim_cur = stacksize;
+    setrlimit(RLIMIT_STACK, &rl);
+  }
   srand(time(0));
   pthread_attr_init(&attr);
-  pthread_attr_setstacksize(&attr, 0xf000000);
+  pthread_attr_setstacksize(&attr, stacksize);
+  return;
+}
+
+/*-------------------------------------------------------*/
+
+void instr_exit(void) {
+  pthread_exit(NULL);
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -62,7 +78,8 @@ char *from_string(tll_ptr x) {
     tmp = (tll_node)(tmp->data[1]);
     len++;
   }
-  str = (char *)MALLOC(len + 1);
+  str = (char *)MALLOC(sizeof(char) * (len + 1));
+  str[len] = 0;
   tmp = (tll_node)x;
   for (int i = 0; i < len; i++) {
     str[i] = from_char(tmp->data[0]);
@@ -146,6 +163,7 @@ tll_ptr proc_stderr(tll_ptr ch) {
 void instr_lten(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = (unsigned long)(v1 <= v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -153,6 +171,7 @@ void instr_lten(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_gten(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = (unsigned long)(v1 >= v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -160,6 +179,7 @@ void instr_gten(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_ltn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = (unsigned long)(v1 < v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -167,6 +187,7 @@ void instr_ltn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_gtn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = (unsigned long)(v1 > v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -174,6 +195,7 @@ void instr_gtn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_eqn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = (unsigned long)(v1 == v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -181,6 +203,7 @@ void instr_eqn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_addn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = ((unsigned long)v1 + (unsigned long)v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -188,6 +211,7 @@ void instr_addn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_subn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = ((unsigned long)v1 - (unsigned long)v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -195,6 +219,7 @@ void instr_subn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_muln(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = ((unsigned long)v1 * (unsigned long)v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -202,6 +227,7 @@ void instr_muln(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_divn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = ((unsigned long)v1 / (unsigned long)v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -209,6 +235,7 @@ void instr_divn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_modn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long res = ((unsigned long)v1 % (unsigned long)v2);
   *x = (tll_ptr)res;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -226,6 +253,7 @@ void instr_clo(tll_ptr *x, tll_ptr (*f)(tll_ptr, tll_env), int size, ...) {
   va_end(ap);
 
   *x = (tll_ptr)tmp;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -234,6 +262,7 @@ void instr_app(tll_ptr *x, tll_ptr clo, tll_ptr v) {
   tll_ptr (*f)(tll_ptr, tll_env) = ((tll_clo)clo)->f;
   tll_env env = ((tll_clo)clo)->env;
   *x = (*f)(v, env);
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -251,6 +280,7 @@ void instr_struct(tll_ptr *x, int tag, int size, ...) {
   va_end(ap);
 
   *x = (tll_ptr)tmp;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -261,6 +291,7 @@ void instr_open(tll_ptr *x, tll_ptr (*f)(tll_ptr)) {
   tll_ptr ch = (tll_ptr)chan_init(0);
   pthread_create(&th, 0, (void *)f, ch);
   *x = ch;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -280,6 +311,7 @@ void instr_fork(tll_ptr *x, tll_ptr (*f)(tll_env), int size, ...) {
 
   pthread_create(&th, &attr, (void *)f, local);
   *x = ch;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -287,6 +319,7 @@ void instr_fork(tll_ptr *x, tll_ptr (*f)(tll_env), int size, ...) {
 void instr_send(tll_ptr *x, tll_ptr ch, tll_ptr msg) {
   chan_send((chan_t *)ch, msg);
   *x = ch;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -295,6 +328,7 @@ void instr_recv(tll_ptr *x, tll_ptr ch) {
   tll_ptr msg;
   chan_recv((chan_t *)ch, &msg);
   instr_struct(x, 0, 2, msg, ch);
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -302,6 +336,7 @@ void instr_recv(tll_ptr *x, tll_ptr ch) {
 void instr_close(tll_ptr *x, tll_ptr ch) {
   chan_dispose((chan_t *)ch);
   *x = 0;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -309,6 +344,7 @@ void instr_close(tll_ptr *x, tll_ptr ch) {
 void instr_sleep(tll_ptr *x, tll_ptr v) {
   sleep((unsigned long)v);
   *x = 0;
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -318,6 +354,7 @@ void instr_rand(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
   unsigned long offset = (unsigned long)v2;
   unsigned long num = (rand() % (offset + 1)) + lower;
   instr_struct(x, Between_c, 3, num, 0, 0);
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -325,6 +362,7 @@ void instr_rand(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 void instr_free_clo(tll_ptr *x) {
   FREE(((tll_clo)x)->env);
   FREE(x);
+  return;
 }
 
 /*-------------------------------------------------------*/
@@ -332,8 +370,12 @@ void instr_free_clo(tll_ptr *x) {
 void instr_free_struct(tll_ptr *x) {
   FREE(((tll_node)x)->data);
   FREE(x);
+  return;
 }
 
 /*-------------------------------------------------------*/
 
-void instr_free_thread(tll_env env) { FREE(env); }
+void instr_free_thread(tll_env env) {
+  FREE(env);
+  return;
+}

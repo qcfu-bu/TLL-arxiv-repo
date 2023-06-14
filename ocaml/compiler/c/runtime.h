@@ -26,7 +26,8 @@ tll_ptr proc_stdout(tll_ptr ch);
 tll_ptr proc_stdin(tll_ptr ch);
 tll_ptr proc_stderr(tll_ptr ch);
 
-void instr_init();
+void instr_init(void);
+void instr_exit(void);
 void instr_lten(tll_ptr *x, tll_ptr v1, tll_ptr v2);
 void instr_gten(tll_ptr *x, tll_ptr v1, tll_ptr v2);
 void instr_ltn(tll_ptr *x, tll_ptr v1, tll_ptr v2);
