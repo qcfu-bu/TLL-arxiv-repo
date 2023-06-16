@@ -318,7 +318,7 @@ let tm_let :=
     { Let (R, Ann (m, a), Binder (opt, n)) }
   | TM_LET; LBRACE; id = identifier; RBRACE; EQUAL; m = tm; TM_IN; n = tm;
     { Let (N, m, Binder (Left id, n)) }
-  | TM_LET; LBRACE; id = identifier; COLON; a = tm; RBRACE; EQUAL; m = tm; TM_IN; n = tm;
+  | TM_LET; LBRACE; id = identifier; RBRACE; COLON; a = tm; EQUAL; m = tm; TM_IN; n = tm;
     { Let (N, Ann (m, a), Binder (Left id, n)) }
 
 let tm_sigma :=

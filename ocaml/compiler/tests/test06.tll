@@ -1,8 +1,4 @@
 program main : IO unit =
-  let x = 0 in
-  let ch ⇐
-    fork (ch : ch⟨ • ⟩) in
-      let y = x in
-      close ch
-  in
-  close ch
+  let x = 1 - 10 in
+  let {pf} : x ≡ 0 = refl in
+  print ("x = " ^ string_of_nat x ^ "\n")
