@@ -14,6 +14,8 @@ endif
 
 all: main.out
 
+fresh: clean main.out
+
 main.out: $(SRC) 
 	$(CC) $(CFLAGS) $^ -o $@
 

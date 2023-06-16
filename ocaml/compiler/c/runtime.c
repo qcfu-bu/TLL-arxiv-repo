@@ -201,7 +201,7 @@ void instr_eqn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 /*-------------------------------------------------------*/
 
 void instr_addn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
-  unsigned long res = ((unsigned long)v1 + (unsigned long)v2);
+  unsigned long res = (unsigned long)v1 + (unsigned long)v2;
   *x = (tll_ptr)res;
   return;
 }
@@ -209,8 +209,12 @@ void instr_addn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
 /*-------------------------------------------------------*/
 
 void instr_subn(tll_ptr *x, tll_ptr v1, tll_ptr v2) {
-  unsigned long res = ((unsigned long)v1 - (unsigned long)v2);
-  *x = (tll_ptr)res;
+  long res = (long)v1 - (long)v2;
+  if (0 <= res) {
+    *x = (tll_ptr)res;
+  } else {
+    *x = 0;
+  }
   return;
 }
 

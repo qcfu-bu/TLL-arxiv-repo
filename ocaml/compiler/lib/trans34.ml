@@ -376,6 +376,22 @@ let trans_dcls dcls =
           }
       in
       aux (proc :: procs) dcls
+    | DFun (x, bnd) :: dcls when I.equal x Prelude1.subn_i ->
+      let xs, _ = unmbind bnd in
+      let xid = I.to_string x in
+      let arg1 = V.to_string xs.(0) in
+      let arg2 = V.to_string xs.(1) in
+      let ret = T.mk "subn_ret" in
+      let instr = [ SubN { lhs = ret; x = Reg arg1; y = Reg arg2 } ] in
+      let proc =
+        GFun
+          { fname = xid
+          ; param = [ arg1; arg2 ]
+          ; body = instr
+          ; return = Reg ret
+          }
+      in
+      aux (proc :: procs) dcls
     | DFun (x, bnd) :: dcls when I.equal x Prelude1.muln_i ->
       let xs, _ = unmbind bnd in
       let xid = I.to_string x in
