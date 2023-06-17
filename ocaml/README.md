@@ -12,7 +12,7 @@ Tested with ocaml 4.14.0.
 Dependencies can be installed by running `opam install . --deps-only` in the project root.
 
 ## C Dependencies 
-Tested with clang 14.0.3.
+Tested with clang 14.0.3 and gcc 13.1.0.
 - `pthreads`
 Unix-like operating systems (Linux, MacOS, WSL, etc.) should come with `pthreads`.
 

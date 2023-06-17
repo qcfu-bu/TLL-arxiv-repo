@@ -95,14 +95,32 @@ program free {A : U} (ls : list‹_,L› A) : unit =
   | _ :: ls ⇒ free _ ls
   end
 
--- 14.17s user 0.09s system 99% cpu 14.274 total
+/- benchmarks for sequential msort
+   gcc
+   real    0m14.658s
+   user    0m14.540s
+   sys     0m0.117s
+
+   clang
+   real    0m13.845s
+   user    0m13.730s
+   sys     0m0.108s -/
 -- program main : IO unit =
 --   let test = mkList‹L› 2000000 in
 --   let sorted = msort test in
 --   let _ = free _ sorted in
 --   return ()
   
--- 15.96s user 0.25s system 694% cpu 2.335 total
+/- benchmarks for concurrent msort
+   gcc
+   real    0m4.124s
+   user    0m6.026s
+   sys     0m4.143s
+
+   clang
+   real    0m4.053s
+   user    0m6.122s
+   sys     0m3.751s -/
 program main : IO unit =
   let test = mkList‹L› 2000000 in
   let msg ⇐ cmsort test in

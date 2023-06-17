@@ -113,13 +113,13 @@ tll_ptr proc_stdout(tll_ptr ch) {
 }
 
 tll_ptr proc_stdin(tll_ptr ch) {
-  int b = 0, rep = 1;
+  int b = 0, rep = 1, tmp = 0;
   char *buffer;
   size_t len;
   tll_ptr msg;
   while (rep) {
     if (b) {
-      getline(&buffer, &len, stdin);
+      tmp = getline(&buffer, &len, stdin);
       msg = to_string(buffer);
       free(buffer);
       chan_send((chan_t *)ch, msg);
@@ -290,10 +290,9 @@ void instr_struct(tll_ptr *x, int tag, int size, ...) {
 /*-------------------------------------------------------*/
 
 void instr_open(tll_ptr *x, tll_ptr (*f)(tll_ptr)) {
-  va_list ap;
   pthread_t th;
   tll_ptr ch = (tll_ptr)chan_init(0);
-  pthread_create(&th, 0, (void *)f, ch);
+  pthread_create(&th, 0, (void *(*)(void *))f, ch);
   *x = ch;
   return;
 }
@@ -313,7 +312,7 @@ void instr_fork(tll_ptr *x, tll_ptr (*f)(tll_env), int size, ...) {
   }
   va_end(ap);
 
-  pthread_create(&th, &attr, (void *)f, local);
+  pthread_create(&th, &attr, (void *(*)(void *))f, local);
   *x = ch;
   return;
 }

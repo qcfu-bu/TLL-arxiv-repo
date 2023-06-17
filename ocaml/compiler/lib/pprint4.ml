@@ -118,9 +118,9 @@ and pp_instr fmt = function
   | Mov { lhs; rhs } -> pf fmt "%s = %a;" lhs pp_value rhs
   | Add { lhs; i; rhs } ->
     if 0 <= i then
-      pf fmt "%s = %a + %d;" lhs pp_value rhs (abs i)
+      pf fmt "%s = (tll_ptr)((long)%a + %d);" lhs pp_value rhs (abs i)
     else
-      pf fmt "%s = %a - %d;" lhs pp_value rhs (abs i)
+      pf fmt "%s = (tll_ptr)((long)%a - %d);" lhs pp_value rhs (abs i)
   | LteN { lhs; x; y } ->
     pf fmt "instr_lten(&%s, %a, %a);" lhs pp_value x pp_value y
   | GteN { lhs; x; y } ->
