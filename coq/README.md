@@ -60,7 +60,7 @@ The following table shows the file containing the encodings of various judgments
 ### Meta Theory
 
 Meta theorems presented in the paper can be found in the following files. 
-All theorems have already taken the extensions described in Section IX into account.
+All theorems have already taken the extensions described in Section 9 into account.
 
 | name in paper                                | file                                          |
 | -------------------------------------------- | --------------------------------------------- |
